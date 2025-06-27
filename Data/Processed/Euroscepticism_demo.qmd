@@ -7,9 +7,10 @@ library(dplyr)
 library(ggplot2)
 library(haven)
 library(tidyr)
+library(here)
 ```
 ```{r, echo=FALSE, include=FALSE}
-euroscepticism_demographic <- read_csv("euroscepticism_demographic.csv")
+euroscepticism_demographic <- read_csv(here("Data", "Processed", "euroscepticism_demographic.csv"))
 ```
 ```{r, echo=FALSE, include=FALSE}
 unique(euroscepticism_demographic$`Left-right_placement`)
@@ -53,9 +54,12 @@ euroscepticism_demographic <- euroscepticism_demographic |>
 globalization <- read_csv("globalization.csv")
 ```
 ```{r, echo=FALSE, include=FALSE}
+globalization <- globalization |> 
+  dplyr::rename(Country = Economy)
+
 euroscepticism_merged <- euroscepticism_demographic|>
   left_join(globalization, by = c("Year", "Country"))
 ```
 ```{r, echo=FALSE, include=FALSE}
-write.csv(euroscepticism_merged, "full_data_euroscepticism_demo.csv", row.names = FALSE)
+write.csv(euroscepticism_merged, here("Data", "Processed", "full_data_euroscepticism_demo.csv"), row.names = FALSE)
 ```
