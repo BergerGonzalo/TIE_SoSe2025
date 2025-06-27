@@ -2,7 +2,6 @@
 title: "EU28_data_globalisation"
 format: html
 ---
-
 ```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 ```
@@ -24,8 +23,7 @@ library(rmarkdown)
 # International Capital Flows
 
 ```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
-fdi_inflow <- read_excel("fdi_inflows_WIR2024_tab01.xlsx")
-View(fdi_inflow)
+fdi_inflow <- read_excel(here("Data", "Raw", "fdi_inflows_WIR2024_tab01.xlsx"))
 ```
 ```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
 colnames(fdi_inflow) <- c("Region/Economy", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
@@ -47,7 +45,7 @@ fdi_inflow <- fdi_inflow[fdi_inflow$"Region/Economy" %in% c("Austria",
                                                                "European Union"),]
 ```
 ```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
-fdi_outflow <- read_excel("fdi_outflows_WIR2024_tab02.xlsx")
+fdi_outflow <- read_excel(here("Data", "Raw", "fdi_outflows_WIR2024_tab02.xlsx"))
 View(fdi_outflow)
 ```
 ```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
@@ -102,7 +100,7 @@ fdi_balance_avg <- fdi_balance_long|>
 # International Labor Flows
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-labor_flow <- read_csv("MST_XWAP_SEX_AGE_CBR_NB_A-20250516T1047.csv")
+labor_flow <- read_csv(here("Data", "Raw", "MST_XWAP_SEX_AGE_CBR_NB_A-20250516T1047.csv"))
 ```
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 labor_flow <- labor_flow[labor_flow$"ref_area.label" %in% c("Austria",
@@ -156,9 +154,9 @@ ratio_migrant_workers <- ratio_migrant_workers|>
 # International Trade
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
-international_trade_1 <- read_csv("international_trade/1995-2004_TradeData_5_16_2025_17_52_30.csv")
-international_trade_2 <- read_csv("international_trade/2005-2014_TradeData_5_16_2025_17_53_56.csv")
-international_trade_3 <- read_csv("international_trade/2015-2024_TradeData_5_16_2025_17_55_3.csv")
+international_trade_1 <- read_csv(here("Data", "Raw", "international_trade/1995-2004_TradeData_5_16_2025_17_52_30.csv"))
+international_trade_2 <- read_csv(here("Data", "Raw", "international_trade/2005-2014_TradeData_5_16_2025_17_53_56.csv"))
+international_trade_3 <- read_csv(here("Data", "Raw", "international_trade/2015-2024_TradeData_5_16_2025_17_55_3.csv"))
 View(international_trade_1)
 View(international_trade_2)
 View(international_trade_3)
@@ -245,8 +243,6 @@ Globalization$Economy <- recode(Globalization$Economy,
                                 "United Kingdom" = "UK")
 
 Globalization <- Globalization[order(Globalization$Year, Globalization$Economy),]
-
-Globalization$`Trade balance of goods` <- Globalization$`Trade balance of goods` / 1e6
 ```
 
 
