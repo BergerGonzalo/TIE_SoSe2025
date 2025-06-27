@@ -1,0 +1,137 @@
+---
+title: "Tables"
+format: html
+---
+
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+install.packages("modelsummary")
+library(dplyr)
+library(tidyr)
+library(gapminder)
+library(rnaturalearth)
+
+library(fixest)
+library(modelsummary)
+library(tinytable)
+library(here)
+```
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+ data(gapminder)
+ data(country_codes)
+ world <- ne_countries(scale = "small", returnclass = "sf") 
+ 
+
+world_gapminder <- gapminder |>
+ filter(year == 2007) |>
+ # add the country codes we need
+ merge(country_codes) |>
+ # merge with the world data (contains geometries)
+ merge(x = world |> select(-continent),
+ y = _,
+ by.x = "adm0_a3", # variable to merge on for world
+ by.y = "iso_alpha", # variable to merge on for gapminder
+ all.x = TRUE) # keep all world rows
+```
+```{r, echo=FALSE, include=FALSE, warning=FALSE}
+feols(lifeExp ~ gdpPercap, data = gapminder)
+```
+
+```{r, echo=FALSE, include=FALSE, warning=FALSE}
+life_expectancy_data <- world_gapminder |>
+ select(lifeExp, gdpPercap, continent, region_un, income_grp, type, sovereignt, year) |>
+ drop_na()
+life_expectancy_model <- feols(
+ lifeExp ~ log(gdpPercap) + type | continent ,
+ data = life_expectancy_data
+)
+life_expectancy_model_without_type <- feols(
+ lifeExp ~ log(gdpPercap) | continent ,
+ data = life_expectancy_data
+)
+```
+
+```{r, echo=FALSE, warning=FALSE}
+life_expectancy_model
+```
+```{r, echo=FALSE, warning=FALSE}
+ life_expectancy_data |> 
+select(lifeExp, gdpPercap, continent) |> 
+datasummary_skim()
+
+life_expectancy_data |> 
+select(`Life expectancy` = lifeExp, 
+`GDP per capita` = gdpPercap, ,
+ `Continent` = continent) |> 
+datasummary_skim()
+
+ life_expectancy_data |> 
+select(`Life expectancy` = lifeExp, 
+`GDP per capita` = gdpPercap, ,
+ `Continent` = continent) |> 
+datasummary_skim(type = "categorical")
+```
+```{r, echo=FALSE, warning=FALSE}
+life_expectancy_model |> 
+modelsummary(stars = TRUE)
+```
+```{r, echo=FALSE, warning=FALSE}
+ list(life_expectancy_model_without_type,
+     life_expectancy_model) |> 
+msummary(stars = TRUE)
+```
+```{r, echo=FALSE, warning=FALSE}
+var_names <- c("log(gdpPercap)" = "Log (GDP per capita)",
+ "typeDependency" = "Type: dependency",
+ "typeDisputed" = "Type: disputed",
+ "typeSovereign country" = "Type: sovereign country",
+ "typeSovereignty" = "Type: sovereignty"
+ )
+
+ list(life_expectancy_model_without_type, 
+     life_expectancy_model) |>
+ msummary(stars = TRUE, 
+coef_map = var_names,
+   notes ="Note: Omitted type category...")
+ 
+  list(life_expectancy_model_without_type, 
+     life_expectancy_model) |>
+ msummary(stars = TRUE, 
+coef_map = var_names,
+ gof_map = c("nobs", "r2.within"),
+ notes = "Omitted type category: Indeterminate. Country-level analysis. Numbers in
+ parentheses refer to standard errors.")
+```
+```{r, echo=FALSE, warning=FALSE}
+list(life_expectancy_model_without_type, 
+     life_expectancy_model) |>
+ msummary(stars = TRUE, 
+coef_map = var_names,
+ gof_map = c("nobs", "r2.within"),
+ fmt = fmt_sprintf("%.2f"),
+ notes = "Omitted type category: Indeterminate. Country-level analysis. Numbers in
+ parentheses refer to standard errors.")
+```
+```{r, echo=FALSE, warning=FALSE}
+ list(life_expectancy_model_without_type, 
+     life_expectancy_model) |>
+ msummary(stars = TRUE, 
+coef_map = var_names,
+ gof_map = c("nobs", "r2.within"),
+ fmt = 2,
+ output = here("regression-table.tex"),
+ notes = "Omitted type category: Indeterminate. Country-level analysis. Numbers in
+ parentheses refer to standard errors.")
+```
+```{r, echo=FALSE, warning=FALSE}
+ list(life_expectancy_model_without_type, 
+     life_expectancy_model) |>
+ msummary(stars = TRUE, 
+coef_map = var_names,
+ gof_map = c("nobs", "r2.within"),
+ fmt = 2,
+ output = here("regression-table.tex"),
+ title = "Regression results. \\label{tab:regression-life-expectancy}",
+ escape = FALSE,
+ notes = "Omitted type category: Indeterminate. Country-level analysis. Numbers in
+ parentheses refer to standard errors.")
+```

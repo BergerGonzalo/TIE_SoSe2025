@@ -1,0 +1,88 @@
+---
+title: "EU_proposals_globalization"
+format: html
+---
+```{r, echo=FALSE}
+library(plm)
+library(dplyr)
+library(ggplot2)
+library(rstudioapi)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(readr)
+library(gridExtra)
+library(lubridate)
+library(readxl)
+library(xfun)
+library(rmarkdown)
+library(haven)
+library(ggplot2)
+library(stargazer)
+```
+```{r, echo=FALSE}
+globalization <- read_csv("globalization.csv")
+eu_proposals <- read_csv("eu_proposals_dataset.csv")
+```
+```{r, echo=FALSE}
+globalization <- read_csv("globalization.csv")
+eu_proposals <- read_csv("eu_proposals_dataset.csv")
+```
+```{r, echo=FALSE}
+colnames(eu_proposals)[1] <- "Year"
+colnames(globalization)[1] <- "Country"
+```
+```{r, echo=FALSE}
+eu_proposals_globalization <- merge(eu_proposals, globalization, by = c("Country", "Year"))
+```
+```{r, echo=FALSE}
+names(eu_proposals_globalization)
+
+colnames(eu_proposals_globalization) <- c("Country", "Year", "Single_currency", "Common_foreign_policy",  "Common_defence_policy",  "Common_migration_policy", "Common_trade_policy", "Trade_balance", "FDI_net", "Migrant_ratio")
+```
+```{r, echo=FALSE}
+panel_data <- pdata.frame(eu_proposals_globalization, index = c("Country", "Year"))
+model_single_currency <- plm(Single_currency ~ Trade_balance + FDI_net + Migrant_ratio,
+              data = panel_data,
+              model = "within",
+              effect = "twoways")
+
+summary(model_single_currency)
+stargazer(model_single_currency, type = "text", title = "Table 2: Single currency", digits = 3)
+```
+```{r, echo=FALSE}
+model_single_currency <- plm(Common_foreign_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+              data = panel_data,
+              model = "within",
+              effect = "twoways")
+
+summary(model_single_currency)
+stargazer(model_single_currency, type = "text", title = "Table 2: Common foreign policy", digits = 3)
+```
+```{r, echo=FALSE}
+model_single_currency <- plm(Common_defence_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+              data = panel_data,
+              model = "within",
+              effect = "twoways")
+
+summary(model_single_currency)
+stargazer(model_single_currency, type = "text", title = "Table 2: Common defence policy", digits = 3)
+```
+```{r, echo=FALSE}
+model_single_currency <- plm(Common_migration_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+              data = panel_data,
+              model = "within",
+              effect = "twoways")
+
+summary(model_single_currency)
+stargazer(model_single_currency, type = "text", title = "Table 2: Common migration policy", digits = 3)
+```
+```{r, echo=FALSE}
+model_single_currency <- plm(Common_trade_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+              data = panel_data,
+              model = "within",
+              effect = "twoways")
+
+summary(model_single_currency)
+stargazer(model_single_currency, type = "text", title = "Table 2: Common trade policy", digits = 3)
+```

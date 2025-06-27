@@ -1,0 +1,118 @@
+---
+title: "Nationalism"
+format: html
+---
+```{r, echo=FALSE}
+library(readr)
+library(plm)
+library(dplyr)
+library(ggplot2)
+library(rstudioapi)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(readr)
+library(gridExtra)
+library(lubridate)
+library(readxl)
+library(xfun)
+library(rmarkdown)
+library(haven)
+library(ggplot2)
+library(stargazer)
+library(xtable)
+```
+```{r, echo=FALSE}
+parliamentary_elections <- read_csv(unz("ppeg_parl_2024v1.zip", "ppeg_parl_2024v1.csv"))
+```
+```{r, echo=FALSE}
+ue15_iso2 <- c("AT", "BE", "DE", "DK", "ES", "FI", "FR", "GB", 
+               "GR", "IE", "IT", "LU", "NL", "PT", "SE")
+parliamentary_elections_filtered <- parliamentary_elections|>
+  dplyr::filter(iso2c %in% ue15_iso2)
+
+parliamentary_elections_filtered <- parliamentary_elections_filtered|>
+  dplyr::mutate(edate = as.Date(edate))
+
+parliamentary_elections_filtered <- parliamentary_elections_filtered|>
+  dplyr::filter(edate >= as.Date("1995-01-01"))
+
+parliamentary_elections_filtered <- parliamentary_elections_filtered|>
+  dplyr::select(iso2c, edate, cmp_parfam, pinitials, v_share, alliance_initials)
+
+parliamentary_elections_filtered <- parliamentary_elections_filtered|>
+  mutate(Year = lubridate::year(edate))
+
+nationalism_results <- parliamentary_elections_filtered|>
+  filter(cmp_parfam == 70)|>              
+  group_by(iso2c, Year)|>               
+  summarize(total_v_share = sum(v_share, na.rm = TRUE))|>
+  ungroup()
+
+nationalism_results <- nationalism_results|>
+  rename(
+    "Country" = "iso2c",
+    "Nationalism_vote_share" = "total_v_share")
+```
+```{r, echo=FALSE}
+write.csv(nationalism_results, "nationalism_vote_share.csv", row.names = FALSE)
+```
+```{r, echo=FALSE}
+ue28_iso2 <- c(
+  "AT", 
+  "BE", 
+  "BG", 
+  "HR", 
+  "CY", 
+  "CZ", 
+  "DK", 
+  "EE",
+  "FI",
+  "FR",
+  "DE",
+  "GR",
+  "HU",
+  "IE",
+  "IT",
+  "LV",
+  "LT",
+  "LU",
+  "MT", 
+  "NL", 
+  "PL",
+  "PT",
+  "RO",
+  "SK",
+  "SI",
+  "ES",
+  "SE",
+  "GB")
+  
+parliamentary_elections_filtered <- parliamentary_elections|>
+  dplyr::filter(iso2c %in% ue28_iso2)
+
+parliamentary_elections_filtered <- parliamentary_elections_filtered|>
+  dplyr::mutate(edate = as.Date(edate))
+
+parliamentary_elections_filtered <- parliamentary_elections_filtered|>
+  dplyr::filter(edate >= as.Date("1995-01-01"))
+
+parliamentary_elections_filtered <- parliamentary_elections_filtered|>
+  dplyr::select(iso2c, cname_en, edate, cmp_parfam, pname_en, pinitials, v_share)
+
+nationalism_results <- parliamentary_elections_filtered|>
+  filter(cmp_parfam == 70)
+
+colnames(nationalism_results) <- c("Country ISO", "Country", "Election Date", "Party Family Code", "Party Name", "Party Initials", "Vote Share Percent")
+
+nationalism_results <- nationalism_results |>
+  select(-`Party Family Code`)
+
+nationalism_results$"Election Date" <- as.character(nationalism_results$"Election Date")
+
+nationalism_results <- nationalism_results |> select(-"Country", -"Party Name")
+```
+```{r, echo=FALSE}
+table_xt <- xtable(nationalism_results)
+print(table_xt, file = "Nationalism_Vote_Share.tex", include.rownames = FALSE, floating = FALSE,  tabular.environment = "longtable")
+```

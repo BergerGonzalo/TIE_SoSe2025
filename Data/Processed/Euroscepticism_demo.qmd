@@ -1,0 +1,61 @@
+---
+title: "Euroscepticism_demo"
+format: html
+---
+```{r, echo=FALSE, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(haven)
+library(tidyr)
+```
+```{r, echo=FALSE, include=FALSE}
+euroscepticism_demographic <- read_csv("euroscepticism_demographic.csv")
+```
+```{r, echo=FALSE, include=FALSE}
+unique(euroscepticism_demographic$`Left-right_placement`)
+
+euroscepticism_demographic$`Left-right_placement` <- ifelse(euroscepticism_demographic$`Left-right_placement` %in% c(11, 12, 97, 98), NA, euroscepticism_demographic$`Left-right_placement`)
+```
+```{r, echo=FALSE, include=FALSE}
+unique(euroscepticism_demographic$Age)
+
+euroscepticism_demographic$Age <- ifelse(euroscepticism_demographic$Age %in% c(11, 14, 12, 13, 2, 3, 8, 10,  7,  9,  6,  0), NA, euroscepticism_demographic$Age)
+```
+```{r, echo=FALSE, include=FALSE}
+unique(euroscepticism_demographic$Age_education)
+
+euroscepticism_demographic$Age_education <- ifelse(euroscepticism_demographic$Age_education %in% c(99, 998, 997, 999), NA, euroscepticism_demographic$Age_education)
+```
+```{r, echo=FALSE, include=FALSE}
+euroscepticism_demographic$Age_education[
+  euroscepticism_demographic$Survey_Id %in% c(2636, 2637)
+] <- NA
+```
+```{r, echo=FALSE, include=FALSE}
+euroscepticism_demographic$Year <- as.integer(floor(euroscepticism_demographic$Year))
+```
+```{r, echo=FALSE, include=FALSE}
+euroscepticism_demographic <- euroscepticism_demographic |>
+  mutate(
+    weight = case_when(
+      Country == "DE-W" ~ 0.8,
+      Country == "DE-E" ~ 0.2,
+      Country == "GB-GBN" ~ 0.97,
+      Country == "GB-NIR" ~ 0.03,
+      Country == "GB" ~ 1,
+      TRUE ~ 1),
+    Country = case_when(
+      Country %in% c("DE-W", "DE-E") ~ "DE",
+      Country %in% c("GB", "GB-GBN", "GB-NIR") ~ "UK",
+      TRUE ~ Country))
+```
+```{r, echo=FALSE, include=FALSE}
+globalization <- read_csv("globalization.csv")
+```
+```{r, echo=FALSE, include=FALSE}
+euroscepticism_merged <- euroscepticism_demographic|>
+  left_join(globalization, by = c("Year", "Country"))
+```
+```{r, echo=FALSE, include=FALSE}
+write.csv(euroscepticism_merged, "full_data_euroscepticism_demo.csv", row.names = FALSE)
+```

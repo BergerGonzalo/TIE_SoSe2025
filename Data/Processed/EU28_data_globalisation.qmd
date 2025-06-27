@@ -1,0 +1,252 @@
+---
+title: "EU28_data_globalisation"
+format: html
+---
+
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+```
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(rstudioapi)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(readr)
+library(gridExtra)
+library(lubridate)
+library(readxl)
+library(xfun)
+library(rmarkdown)
+```
+
+# International Capital Flows
+
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+fdi_inflow <- read_excel("fdi_inflows_WIR2024_tab01.xlsx")
+View(fdi_inflow)
+```
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+colnames(fdi_inflow) <- c("Region/Economy", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+fdi_inflow <- fdi_inflow[fdi_inflow$"Region/Economy" %in% c("Austria",
+                                                               "Belgium",
+                                                               "Denmark",
+                                                               "Finland",
+                                                               "France",
+                                                               "Germany",
+                                                               "Greece",
+                                                               "Ireland",
+                                                               "Italy",
+                                                               "Luxembourg",
+                                                               "Netherlands",
+                                                               "Portugal",
+                                                               "Spain",
+                                                               "Sweden",
+                                                               "United Kingdom",
+                                                               "European Union"),]
+```
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+fdi_outflow <- read_excel("fdi_outflows_WIR2024_tab02.xlsx")
+View(fdi_outflow)
+```
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+colnames(fdi_outflow) <- c("Region/Economy", "1990", "1991", "1992", "1993", "1994", "1995", "1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+fdi_outflow <- fdi_outflow[fdi_outflow$"Region/Economy" %in% c("Austria",
+                                                               "Belgium",
+                                                               "Denmark",
+                                                               "Finland",
+                                                               "France",
+                                                               "Germany",
+                                                               "Greece",
+                                                               "Ireland",
+                                                               "Italy",
+                                                               "Luxembourg",
+                                                               "Netherlands",
+                                                               "Portugal",
+                                                               "Spain",
+                                                               "Sweden",
+                                                               "United Kingdom",
+                                                               "European Union"),]
+```
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+fdi_merged <- merge(fdi_inflow, fdi_outflow, by = "Region/Economy")
+
+cols_x <- grep("\\.x$", names(fdi_merged), value = TRUE)
+for (col in cols_x) {
+  base_name <- sub("\\.x$", "", col)
+  fdi_merged[[base_name]] <- fdi_merged[[col]] - fdi_merged[[paste0(base_name, ".y")]]
+}
+
+fdi_net_balance <- fdi_merged|>
+  select(-matches("\\.x$|\\.y$"))
+```
+
+```{r, echo=FALSE}
+fdi_balance_long <- fdi_net_balance|>
+  filter(`Region/Economy` != "European Union")|>
+  pivot_longer(
+    cols = matches("^\\d{4}$"),
+    names_to = "Year",
+    values_to = "FDI"
+  )|>
+  mutate(Year = as.numeric(Year)) %>%
+  filter(Year >= 1995)
+
+
+fdi_balance_avg <- fdi_balance_long|>
+  group_by(Year)|>
+  summarize(FDI = mean(FDI, na.rm = TRUE))
+```
+
+# International Labor Flows
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+labor_flow <- read_csv("MST_XWAP_SEX_AGE_CBR_NB_A-20250516T1047.csv")
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+labor_flow <- labor_flow[labor_flow$"ref_area.label" %in% c("Austria",
+                                                               "Belgium",
+                                                               "Denmark",
+                                                               "Finland",
+                                                               "France",
+                                                               "Germany",
+                                                               "Greece",
+                                                               "Ireland",
+                                                               "Italy",
+                                                               "Luxembourg",
+                                                               "Netherlands",
+                                                               "Portugal",
+                                                               "Spain",
+                                                               "Sweden",
+                                                               "United Kingdom of Great Britain and Northern Ireland",
+                                                               "European Union"),]
+
+labor_flow_filtered <- labor_flow|>
+  filter(classif1.label == "Age (Youth, adults): 15-64", sex.label == "Total")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ratio_migrant_workers <- labor_flow_filtered|>
+  filter(classif2.label %in% c("Place of birth: Foreign-born", "Place of birth: Native-born"))
+
+wide_data <- ratio_migrant_workers|>
+  pivot_wider(names_from = classif2.label, values_from = obs_value)
+wide_data <- wide_data|>
+  mutate(ratio = as.numeric(`Place of birth: Foreign-born`) / as.numeric(`Place of birth: Native-born`))
+wide_data <- wide_data|>
+  mutate(ratio = scales::label_number(accuracy = 0.0001)(ratio))
+wide_data <- wide_data|>
+  mutate(ratio = as.numeric(ratio))
+
+ratio_migrant_workers <- wide_data|>
+  group_by(time, ref_area.label)|>
+  summarize(ratio = sum(ratio, na.rm = TRUE), .groups = 'drop')
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+ratio_migrant_workers <- ratio_migrant_workers|>
+  complete(ref_area.label, time = 1995:2024, fill = list(ratio = NA))|>
+  filter(time >= 1995)
+
+ratio_migrant_workers <- ratio_migrant_workers|>
+  mutate(ref_area.label = ifelse(ref_area.label == "United Kingdom of Great Britain and Northern Ireland", 
+                                 "United Kingdom", 
+                                 ref_area.label))
+```
+# International Trade
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+international_trade_1 <- read_csv("international_trade/1995-2004_TradeData_5_16_2025_17_52_30.csv")
+international_trade_2 <- read_csv("international_trade/2005-2014_TradeData_5_16_2025_17_53_56.csv")
+international_trade_3 <- read_csv("international_trade/2015-2024_TradeData_5_16_2025_17_55_3.csv")
+View(international_trade_1)
+View(international_trade_2)
+View(international_trade_3)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+international_trade <- bind_rows(international_trade_1, international_trade_2, international_trade_3)
+
+international_trade <- international_trade|>
+  filter(reporterDesc %in% c("Austria",
+                             "Belgium",
+                             "Belgium-Luxembourg (...1998)",
+                             "Denmark",
+                             "Finland",
+                             "France",
+                             "Germany",
+                             "Greece",
+                             "Ireland",
+                             "Italy",
+                             "Luxembourg",
+                             "Netherlands",
+                             "Portugal",
+                             "Spain",
+                             "Sweden",
+                             "United Kingdom"))
+```
+```{r, echo=FALSE}
+trade_balance <- international_trade|>
+  filter(period >= 1995, period <= 2023)|>
+  group_by(reporterDesc, period)|>
+  summarize(
+    fobvalue_sum = sum(fobvalue, na.rm = TRUE),
+    cifvalue_sum = sum(cifvalue, na.rm = TRUE),
+    .groups = "drop")|>
+  mutate(balance_difference = fobvalue_sum - cifvalue_sum)|>
+  select(reporterDesc, period, balance_difference)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fdi_net_balance <- fdi_net_balance|>
+  pivot_longer(cols = -"Region/Economy",
+               names_to = "Year",
+               values_to = "FDInet")
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+colnames(fdi_net_balance)[colnames(fdi_net_balance) == "Region/Economy"] <- "Economy"
+
+colnames(trade_balance)[colnames(trade_balance) == "reporterDesc"] <- "Economy"
+colnames(trade_balance)[colnames(trade_balance) == "period"] <- "Year"
+colnames(trade_balance)[colnames(trade_balance) == "balance_difference"] <- "X-M"
+
+colnames(ratio_migrant_workers)[colnames(ratio_migrant_workers) == "ref_area.label"] <- "Economy"
+colnames(ratio_migrant_workers)[colnames(ratio_migrant_workers) == "time"] <- "Year"
+colnames(ratio_migrant_workers)[colnames(ratio_migrant_workers) == "ratio"] <- "MWr"
+
+trade_balance_filtered <- trade_balance|> filter(Economy != "Belgium-Luxembourg (...1998)")
+fdi_net_balance_filtered <- fdi_net_balance|> filter(Economy != "European Union")
+
+trade_balance_filtered$Year <- as.numeric(trade_balance_filtered$Year)
+fdi_net_balance_filtered$Year <- as.numeric(fdi_net_balance_filtered$Year)
+ratio_migrant_workers$Year <- as.numeric(ratio_migrant_workers$Year)
+
+Globalization <- merge(trade_balance_filtered, fdi_net_balance_filtered, by = c("Economy", "Year"), all = TRUE)
+Globalization <- merge(Globalization, ratio_migrant_workers, by = c("Economy", "Year"), all = TRUE)
+
+Globalization <- Globalization|>
+  filter(Year >= 1995 & Year <= 2023)
+```
+```{r, echo=FALSE}
+unique(Globalization$Economy)
+Globalization$Economy <- recode(Globalization$Economy,
+                                "Austria" = "AT",
+                                "Belgium" = "BE",
+                                "Denmark" = "DK",
+                                "Finland" = "FI",
+                                "France" = "FR",
+                                "Germany" = "DE",
+                                "Greece" = "GR",
+                                "Ireland" = "IE",
+                                "Italy" = "IT",
+                                "Luxembourg" = "LU",
+                                "Netherlands" = "NL",
+                                "Portugal" = "PT",
+                                "Spain" = "ES",
+                                "Sweden" = "SE",
+                                "United Kingdom" = "UK")
+
+Globalization <- Globalization[order(Globalization$Year, Globalization$Economy),]
+
+Globalization$`Trade balance of goods` <- Globalization$`Trade balance of goods` / 1e6
+```
+
+
