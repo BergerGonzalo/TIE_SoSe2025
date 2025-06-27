@@ -4,7 +4,6 @@ format: html
 ---
 
 ```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
-install.packages("modelsummary")
 library(dplyr)
 library(tidyr)
 library(gapminder)
