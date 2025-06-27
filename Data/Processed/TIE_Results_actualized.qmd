@@ -32,8 +32,8 @@ library(summarytools)
 ```
 ### Attitudes towards the EU (Euroscepticism)
 ```{r, echo=FALSE}
-full_data_euroscepticism_demo <- read_csv("full_data_euroscepticism_demo.csv")
-eu_proposals_data <- read_csv("eu_proposals_dataset.csv")
+full_data_euroscepticism_demo <- read_csv(here("Data", "Processed", "full_data_euroscepticism_demo.csv"))
+eu_proposals_data <- read_csv(here("Data", "Processed", "eu_proposals_dataset.csv"))
 ```
 ```{r, echo=FALSE}
 full_data_euroscepticism_demo <- full_data_euroscepticism_demo|>
@@ -717,8 +717,8 @@ modelsummary(
 ### Nationalism vote share (15 countries)
 
 ```{r, echo=FALSE}
-nationalism_vote_share <- read_csv("nationalism_vote_share.csv")
-EU28_data_globalisation <- read_csv("EU28_data_globalisation.csv")
+nationalism_vote_share <- read_csv(here("Data", "Processed", "nationalism_vote_share.csv"))
+EU28_data_globalisation <- read_csv(here("Data", "Processed", "EU28_data_globalisation.csv"))
 
 nationalism_vote_share_data <- nationalism_vote_share|>
 left_join(EU28_data_globalisation, by = c("Country" = "Country", "Year" = "Year"))
@@ -730,8 +730,8 @@ nationalism_vote_share_data  <- nationalism_vote_share_data  %>%
 ```
 
 ```{r, echo=FALSE}
-EU28_nationalism_vote_share <- read_csv("EU28_nationalism_vote_share.csv")
-EU28_data_globalisation <- read_csv("EU28_data_globalisation.csv")
+EU28_nationalism_vote_share <- read_csv(here("Data", "Processed", "EU28_nationalism_vote_share.csv"))
+EU28_data_globalisation <- read_csv(here("Data", "Processed", "EU28_data_globalisation.csv"))
 
 EU28_nationalism_vote_share_data <- EU28_nationalism_vote_share|>
 left_join(EU28_data_globalisation, by = c("Country" = "Country", "Year" = "Year"))
