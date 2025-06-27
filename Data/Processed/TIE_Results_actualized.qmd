@@ -1,0 +1,895 @@
+---
+title: "TIE_Results_actualized"
+format: html
+---
+```{r, echo=FALSE}
+options(scipen = 999)
+library(plm)
+library(dplyr)
+library(ggplot2)
+library(rstudioapi)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(readr)
+library(gridExtra)
+library(lubridate)
+library(readxl)
+library(xfun)
+library(rmarkdown)
+library(haven)
+library(ggplot2)
+library(stargazer)
+library(modelsummary)
+library(webshot2)
+library(lme4)
+library(sandwich)
+library(lmtest)
+library(betareg)
+library(car)
+library(stringr)
+library(summarytools)
+```
+### Attitudes towards the EU (Euroscepticism)
+```{r, echo=FALSE}
+full_data_euroscepticism_demo <- read_csv("full_data_euroscepticism_demo.csv")
+eu_proposals_data <- read_csv("eu_proposals_dataset.csv")
+```
+```{r, echo=FALSE}
+full_data_euroscepticism_demo <- full_data_euroscepticism_demo|>
+  mutate(
+    age_group = floor(Age / 5) * 5,
+    age_group_label = paste0(age_group, "-", age_group + 4))
+
+full_data_euroscepticism_demo <- full_data_euroscepticism_demo|>
+  mutate(cohort_id = Country)
+
+full_data_euroscepticism_demo <- full_data_euroscepticism_demo|>
+mutate(euroscepticism = if_else(`EU_membership_good-bad` == 2, 1, 0))
+
+full_data_euroscepticism_demo <- full_data_euroscepticism_demo|>
+mutate(EU_not_benefit = if_else(`EU_membership_country_benefit` == 2, 1, 0))
+
+pseudo_panel_aggregated <- full_data_euroscepticism_demo|>
+  group_by(cohort_id, Year)|>
+  summarize(
+    euroscepticism = weighted.mean(euroscepticism, weight, na.rm = TRUE),
+    EU_not_benefit = weighted.mean(EU_not_benefit, weight, na.rm = TRUE),
+    `Trade balance of goods` = mean(`Trade balance of goods`, na.rm = TRUE),
+    `FDI net balance` = mean(`FDI net balance`, na.rm = TRUE),
+    `Ratio of migrant to native workers` = mean(`Ratio of migrant to native workers`, na.rm = TRUE),
+    .groups = "drop")
+
+pseudo_panel_aggregated <- pseudo_panel_aggregated %>%
+  mutate(
+    Trade_balance_scaled = `Trade balance of goods` / 1e6,
+    FDI_net_balance_scaled = `FDI net balance` / 1e6)
+
+pseudo_panel_data <- pdata.frame(pseudo_panel_aggregated, index = c("cohort_id", "Year"))
+
+pseudo_panel_data <- pseudo_panel_data |>
+  mutate(Year = as.numeric(as.character(Year)))
+```
+```{r, echo=FALSE}
+eu_proposals_data <- eu_proposals_data|>
+  mutate(cohort_id = Country)
+
+eu_proposals_data <- eu_proposals_data|>
+mutate(Single_currency = if_else(Single_currency == 2, 1, 0))
+
+eu_proposals_data <- eu_proposals_data|>
+mutate(Common_foreign_policy = if_else(Common_foreign_policy == 2, 1, 0))
+
+eu_proposals_data <- eu_proposals_data|>
+mutate(Common_defence_policy = if_else(Common_defence_policy == 2, 1, 0))
+
+eu_proposals_data <- eu_proposals_data|>
+mutate(Common_migration_policy = if_else(Common_migration_policy == 2, 1, 0))
+
+eu_proposals_data <- eu_proposals_data|>
+mutate(Common_trade_policy = if_else(Common_trade_policy == 2, 1, 0))
+
+eu_proposals_pseudo_panel_aggregated <- eu_proposals_data|>
+  group_by(cohort_id, Year)|>
+  summarize(
+    Single_currency = weighted.mean(Single_currency, weight, na.rm = TRUE),
+    Common_foreign_policy = weighted.mean(Common_foreign_policy, weight, na.rm = TRUE),
+    Common_defence_policy = weighted.mean(Common_defence_policy, weight, na.rm = TRUE),
+    Common_migration_policy = weighted.mean(Common_migration_policy, weight, na.rm = TRUE),
+    Common_trade_policy = weighted.mean(Common_trade_policy, weight, na.rm = TRUE),
+    `Trade balance of goods` = mean(`Trade balance of goods`, na.rm = TRUE),
+    `FDI net balance` = mean(`FDI net balance`, na.rm = TRUE),
+    `Ratio of migrant to native workers` = mean(`Ratio of migrant to native workers`, na.rm = TRUE),
+    .groups = "drop")
+
+eu_proposals_pseudo_panel_aggregated <- eu_proposals_pseudo_panel_aggregated %>%
+  mutate(
+    Trade_balance_scaled = `Trade balance of goods` / 1e6,
+    FDI_net_balance_scaled = `FDI net balance` / 1e6)
+
+eu_proposals_pseudo_panel_data <- pdata.frame(eu_proposals_pseudo_panel_aggregated, index = c("cohort_id", "Year"))
+
+eu_proposals_pseudo_panel_data <- eu_proposals_pseudo_panel_data |>
+  mutate(Year = as.numeric(as.character(Year)))
+```
+```{r, echo=FALSE}
+pseudo_var_names <- c(
+  "Trade_balance_scaled" = "Trade balance of goods (billions)",
+  "FDI_net_balance_scaled" = "FDI net balance (billions)",
+  "Ratio.of.migrant.to.native.workers" = "Migrant to native workers ratio",
+  "EU_enlargement_2004" = "EU enlargement (2004)",
+   "EU_enlargement_2007" = "EU enlargement (2007)",
+   "EU_enlargement_2013" = "EU enlargement (2013)",
+   "Brexit_2020" = "Brexit (2020) / COVID-19",
+   "Eurozone_crisis" = "Euro area sorevereign debt crisis (2010-2012)",
+   "Annexation_of_Crimea" = "Annexation of Crimea by Russia (2014)",
+   "Refugee_crisis" = "Refugee crisis (2015)",
+   "COVID_pandemic" = "COVID-19 (2020-2021)",
+   "Invasion_of_Ukraine" = "Russian invasion of Ukraine (2022)",
+   "Nationalism_vote_share" = "Nationalist parties' vote share in parliamentary elections",
+   "Single_currency" = "Opposition to the single currency (Euro)",
+   "Common_foreign_policy" = "Opposition to a common foreign policy",
+   "Common_defence_policy" = "Opposition to a common defence policy",
+   "Common_migration_policy" = "Opposition to a common migratory policy",
+   "Common_trade_policy" = "Opposition to a common trade policy")
+```
+
+## Multicollinearity test
+```{r, echo=FALSE}
+model_pseudo_panel_lm <- lm(
+  euroscepticism ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = pseudo_panel_data)
+
+vif(model_pseudo_panel_lm)
+```
+## Euroscepticism pseudo-panel data model
+```{r, echo=FALSE}
+model_pseudo_panel <- plm(
+  euroscepticism ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = pseudo_panel_data,
+  model = "pooling")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_fe <- plm(
+  euroscepticism ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "twoways")
+```
+
+### Attitudes towards the EU (Euroscepticism including controls)
+```{r, echo=FALSE}
+pseudo_panel_data <- pseudo_panel_data|>
+  mutate(
+    EU_enlargement_2004 = ifelse(Year >= 2004, 1, 0),
+    EU_enlargement_2007 = ifelse(Year >= 2007, 1, 0),
+    EU_enlargement_2013 = ifelse(Year >= 2013, 1, 0),
+    Brexit_2020 = ifelse(Year >= 2020, 1, 0))
+
+pseudo_panel_data <- pseudo_panel_data|>
+  mutate(
+    Eurozone_crisis = ifelse(Year >= 2010 & Year <= 2012, 1, 0),
+    Annexation_of_Crimea = ifelse(Year == 2014, 1, 0),
+    Refugee_crisis = ifelse(Year == 2015, 1, 0),
+    COVID_pandemic = ifelse(Year >= 2020 & Year <= 2021, 1, 0),
+    Invasion_of_Ukraine = ifelse(Year >= 2022, 1, 0))
+```
+
+## Euroscepticism pseudo-panel data model (controlling for EU enlargement)
+
+### Multicollinearity test
+```{r, echo=FALSE}
+model_pseudo_panel_enlargement_lm <- lm(
+  euroscepticism ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers
+  + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = pseudo_panel_data)
+
+vif(model_pseudo_panel_enlargement_lm)
+```
+```{r, echo=FALSE}
+model_pseudo_panel_enlargement <- plm(
+  euroscepticism ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+
+modelsummary(model_pseudo_panel_enlargement)
+
+```
+### including interactions between explanatory and control variables
+
+```{r, echo=FALSE}
+model_pseudo_panel_enlargement_interac <- plm(
+   euroscepticism ~ Trade_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    FDI_net_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    Ratio.of.migrant.to.native.workers * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020),
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+
+## Euroscepticism pseudo-panel data model (controlling for EU critical events)
+### Multicollinearity test
+```{r, echo=FALSE}
+model_pseudo_panel_critical_lm <- lm(
+  euroscepticism ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers
+  + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = pseudo_panel_data)
+
+vif(model_pseudo_panel_critical_lm)
+```
+```{r, echo=FALSE}
+model_pseudo_panel_critical <- plm(
+  euroscepticism ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+### including interactions between explanatory and control variables
+```{r, echo=FALSE}
+model_pseudo_panel_critical_interac <- plm(
+   euroscepticism ~ Trade_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    FDI_net_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    Ratio.of.migrant.to.native.workers * (Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine),
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+### Output: Regression Table 1
+```{r, echo=FALSE}
+modelsummary(
+  list(
+    "Baseline Model" = model_pseudo_panel,
+    "Fixed Effects Model" = model_pseudo_panel_fe,
+    "EU Enlargement Model" = model_pseudo_panel_enlargement,
+    "Interaction Model" = model_pseudo_panel_enlargement_interac,
+    "External Shocks Model" = model_pseudo_panel_critical,
+    "Interaction Model" = model_pseudo_panel_critical_interac
+  ),
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 1: Globalisation and Euroscepticism",
+    output = "regression_table_1.tex"
+  )
+```
+```{r, echo=FALSE}
+waldtest(model_pseudo_panel_enlargement, model_pseudo_panel_enlargement_interac,
+         vcov = function(x) vcovHC(x, type = "HC1", cluster = "group"))
+```
+```{r, echo=FALSE}
+waldtest(model_pseudo_panel_critical, model_pseudo_panel_critical_interac,
+         vcov = function(x) vcovHC(x, type = "HC1", cluster = "group"))
+```
+
+### Attitudes towards the EU (EU considered not benefitial)
+
+### The EU considered not-benefitial pseudo-panel data model
+
+```{r, echo=FALSE}
+model_not_benefit_pseudo_panel <- plm(
+  EU_not_benefit ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = pseudo_panel_data,
+  model = "pooling")
+```
+```{r, echo=FALSE}
+model_not_benefit_pseudo_panel_fe <- plm(
+  EU_not_benefit ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "twoways")
+```
+## The EU considered not-benefitial pseudo-panel data model (controlling for EU enlargement)
+```{r, echo=FALSE}
+model_not_benefit_pseudo_panel_enlargement <- plm(
+   EU_not_benefit ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+
+## The EU considered not-benefitial pseudo-panel data model (controlling for EU critical events)
+```{r, echo=FALSE}
+model_not_benefit_pseudo_panel_critical <- plm(
+   EU_not_benefit ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+### including interactions between explanatory and control variables
+```{r, echo=FALSE}
+model_not_benefit_pseudo_panel_enlargement_interac <- plm(
+   EU_not_benefit ~ Trade_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    FDI_net_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    Ratio.of.migrant.to.native.workers * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020),
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+### including interactions between explanatory and control variables
+```{r, echo=FALSE}
+model_not_benefit_pseudo_panel_critical_interac <- plm(
+   EU_not_benefit ~ Trade_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    FDI_net_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    Ratio.of.migrant.to.native.workers * (Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine),
+  data = pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+### Output: Regression Table 2
+```{r, echo=FALSE}
+modelsummary(
+  list(
+    "Baseline Model" = model_not_benefit_pseudo_panel,
+    "Fixed Effects Model" = model_not_benefit_pseudo_panel_fe,
+    "EU Enlargement Model" = model_not_benefit_pseudo_panel_enlargement,
+    "Interaction Model" = model_not_benefit_pseudo_panel_enlargement_interac,
+    "External Shocks Model" = model_not_benefit_pseudo_panel_critical,
+    "Interaction Model" = model_not_benefit_pseudo_panel_critical_interac
+  ),
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 2: Globalisation and Perception of the European Union as not beneficial",
+    output = "regression_table_2.tex"
+  )
+```
+### Attitudes towards EU common policies
+
+## Opposition to the single currency (Euro)
+```{r, echo=FALSE}
+model_pseudo_panel_currency <- plm(
+  Single_currency ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "pooling")
+```
+```{r, echo=FALSE}
+fe_model_pseudo_panel_currency <- plm(
+  Single_currency ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "twoways")
+```
+## Opposition to a common foreign policy
+```{r, echo=FALSE}
+model_pseudo_panel_foreign <- plm(
+  Common_foreign_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "pooling")
+```
+```{r, echo=FALSE}
+fe_model_pseudo_panel_foreign <- plm(
+  Common_foreign_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "twoways")
+```
+## Opposition to a common defence policy
+```{r, echo=FALSE}
+model_pseudo_panel_defence <- plm(
+  Common_defence_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "pooling")
+```
+```{r, echo=FALSE}
+fe_model_pseudo_panel_defence <- plm(
+  Common_defence_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "twoways")
+```
+## Opposition to a common migratory policy
+```{r, echo=FALSE}
+model_pseudo_panel_migration <- plm(
+  Common_migration_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "pooling")
+```
+```{r, echo=FALSE}
+fe_model_pseudo_panel_migration <- plm(
+  Common_migration_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "twoways")
+```
+## Opposition to a common trade policy
+```{r, echo=FALSE}
+model_pseudo_panel_trade <- plm(
+  Common_trade_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "pooling")
+```
+```{r, echo=FALSE}
+fe_model_pseudo_panel_trade <- plm(
+  Common_trade_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "twoways")
+```
+```{r, echo=FALSE}
+setNames(
+  list(
+    model_pseudo_panel_currency,
+    model_pseudo_panel_foreign,
+    model_pseudo_panel_defence,
+    model_pseudo_panel_migration,
+    model_pseudo_panel_trade),
+  c(
+    "Single currency", 
+    "Common foreign policy", 
+    "Common defence policy", 
+    "Common migratory policy", 
+    "Common trade policy"))|>
+msummary(
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r2.within", "r.squared", "adj.r.squared"),
+  output = "EU_proposals.html")
+```
+```{r, echo=FALSE}
+model_list <- list(
+  "Single Currency" = model_pseudo_panel_currency,
+  "Common Foreign Policy" = model_pseudo_panel_foreign,
+  "Common Defence Policy" = model_pseudo_panel_defence,
+  "Common Migration Policy" = model_pseudo_panel_migration,
+  "Common Trade Policy" = model_pseudo_panel_trade
+)
+
+modelsummary(
+  model_list,
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 3: Globalisation and Opposition to Common European Policies (Baseline)",
+  output = "regression_table_3.tex"
+)
+```
+```{r, echo=FALSE}
+fe_model_list <- list(
+  "Single Currency" = fe_model_pseudo_panel_currency,
+  "Common Foreign Policy" = fe_model_pseudo_panel_foreign,
+  "Common Defence Policy" = fe_model_pseudo_panel_defence,
+  "Common Migration Policy" = fe_model_pseudo_panel_migration,
+  "Common Trade Policy" = fe_model_pseudo_panel_trade
+)
+
+modelsummary(
+  fe_model_list,
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 4: Globalisation and Opposition to Common European Policies (Fixed Effects)",
+  output = "regression_table_4.tex"
+)
+```
+```{r, echo=FALSE}
+eu_proposals_pseudo_panel_data <- eu_proposals_pseudo_panel_data|>
+  mutate(
+    EU_enlargement_2004 = ifelse(Year >= 2004, 1, 0),
+    EU_enlargement_2007 = ifelse(Year >= 2007, 1, 0),
+    EU_enlargement_2013 = ifelse(Year >= 2013, 1, 0),
+    Brexit_2020 = ifelse(Year >= 2020, 1, 0))
+
+eu_proposals_pseudo_panel_data <- eu_proposals_pseudo_panel_data|>
+  mutate(
+    Eurozone_crisis = ifelse(Year >= 2010 & Year <= 2012, 1, 0),
+    Annexation_of_Crimea = ifelse(Year == 2014, 1, 0),
+    Refugee_crisis = ifelse(Year == 2015, 1, 0),
+    COVID_pandemic = ifelse(Year >= 2020 & Year <= 2021, 1, 0),
+    Invasion_of_Ukraine = ifelse(Year >= 2022, 1, 0))
+```
+## Opposition to the single currency (Euro) (controlling for EU enlargement)
+```{r, echo=FALSE}
+model_pseudo_panel_currency_enlargement <- plm(
+  Single_currency ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_currency_enlargement_interac <- plm(
+  Single_currency ~ Trade_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    FDI_net_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    Ratio.of.migrant.to.native.workers * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common foreign policy (controlling for EU enlargement)
+```{r, echo=FALSE}
+model_pseudo_panel_foreign_enlargement <- plm(
+  Common_foreign_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_foreign_enlargement_interac <- plm(
+  Common_foreign_policy ~ Trade_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    FDI_net_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    Ratio.of.migrant.to.native.workers * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common defence policy (controlling for EU enlargement)
+```{r, echo=FALSE}
+model_pseudo_panel_defence_enlargement <- plm(
+  Common_defence_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_defence_enlargement_interac <- plm(
+  Common_defence_policy ~ Trade_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    FDI_net_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    Ratio.of.migrant.to.native.workers * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common migratory policy (controlling for EU enlargement)
+```{r, echo=FALSE}
+model_pseudo_panel_migration_enlargement <- plm(
+  Common_migration_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_migration_enlargement_interac <- plm(
+  Common_migration_policy ~ Trade_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    FDI_net_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    Ratio.of.migrant.to.native.workers * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common trade policy (controlling for EU enlargement)
+```{r, echo=FALSE}
+model_pseudo_panel_trade_enlargement <- plm(
+  Common_trade_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_trade_enlargement_interac <- plm(
+  Common_trade_policy ~ Trade_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    FDI_net_balance_scaled * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020) +
+    Ratio.of.migrant.to.native.workers * (EU_enlargement_2004 + EU_enlargement_2007 + EU_enlargement_2013 + Brexit_2020),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+
+## Opposition to the single currency (Euro) (controlling for critical events)
+```{r, echo=FALSE}
+model_pseudo_panel_currency_critical <- plm(
+  Single_currency ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_currency_critical_interac <- plm(
+  Single_currency ~ Trade_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    FDI_net_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    Ratio.of.migrant.to.native.workers * (Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common foreign policy (controlling for critical events)
+```{r, echo=FALSE}
+model_pseudo_panel_foreign_critical <- plm(
+  Common_foreign_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_foreign_critical_interac <- plm(
+  Common_foreign_policy ~ Trade_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    FDI_net_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    Ratio.of.migrant.to.native.workers * (Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common defence policy (controlling for critical events)
+```{r, echo=FALSE}
+model_pseudo_panel_defence_critical <- plm(
+  Common_defence_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_defence_critical_interac <- plm(
+  Common_defence_policy ~ Trade_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    FDI_net_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    Ratio.of.migrant.to.native.workers * (Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common migratory policy (controlling for critical events)
+```{r, echo=FALSE}
+model_pseudo_panel_migration_critical <- plm(
+  Common_migration_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_migration_critical_interac <- plm(
+  Common_migration_policy ~ Trade_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    FDI_net_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    Ratio.of.migrant.to.native.workers * (Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+## Opposition to a common trade policy (controlling for critical events)
+```{r, echo=FALSE}
+model_pseudo_panel_trade_critical <- plm(
+  Common_trade_policy ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers + Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine,
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+model_pseudo_panel_trade_critical_interac <- plm(
+  Common_trade_policy ~ Trade_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    FDI_net_balance_scaled * (Eurozone_crisis + Annexation_of_Crimea + COVID_pandemic + Invasion_of_Ukraine) +
+    Ratio.of.migrant.to.native.workers * (Eurozone_crisis + Annexation_of_Crimea + Refugee_crisis + COVID_pandemic + Invasion_of_Ukraine),
+  data = eu_proposals_pseudo_panel_data,
+  model = "within",
+  effect = "individual")
+```
+```{r, echo=FALSE}
+modelsummary(
+  list(
+    "Single Currency" = model_pseudo_panel_currency_enlargement,
+    "Foreign Policy" = model_pseudo_panel_foreign_enlargement,
+    "Defence Policy" = model_pseudo_panel_defence_enlargement,
+    "Migration Policy" = model_pseudo_panel_migration_enlargement,
+    "Trade Policy" = model_pseudo_panel_trade_enlargement
+  ),
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 5: Globalisation and Opposition to Common European Policies\n(Controlling for EU Enlargement)",
+  output = "regression_table_5.tex"
+)
+```
+```{r, echo=FALSE}
+modelsummary(
+  list(
+    "Single Currency" = model_pseudo_panel_currency_enlargement_interac,
+    "Foreign Policy" = model_pseudo_panel_foreign_enlargement_interac,
+    "Defence Policy" = model_pseudo_panel_defence_enlargement_interac,
+    "Migration Policy" = model_pseudo_panel_migration_enlargement_interac,
+    "Trade Policy" = model_pseudo_panel_trade_enlargement_interac
+  ),
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 6: Globalisation and Opposition to Common European Policies (Controlling for EU Enlargement and Including Interaction Terms)",
+  output = "regression_table_6.tex"
+)
+```
+```{r, echo=FALSE}
+modelsummary(
+  list(
+    "Single Currency" = model_pseudo_panel_currency_critical,
+    "Foreign Policy" = model_pseudo_panel_foreign_critical,
+    "Defence Policy" = model_pseudo_panel_defence_critical,
+    "Migration Policy" = model_pseudo_panel_migration_critical,
+    "Trade Policy" = model_pseudo_panel_trade_critical
+  ),
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 7: Globalisation and Opposition to Common European Policies (Controlling for External Shocks)",
+  output = "regression_table_7.tex"
+)
+```
+```{r, echo=FALSE}
+modelsummary(
+  list(
+    "Single Currency" = model_pseudo_panel_currency_critical_interac,
+    "Foreign Policy" = model_pseudo_panel_foreign_critical_interac,
+    "Defence Policy" = model_pseudo_panel_defence_critical_interac,
+    "Migration Policy" = model_pseudo_panel_migration_critical_interac,
+    "Trade Policy" = model_pseudo_panel_trade_critical_interac
+  ),
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 8: Globalisation and Opposition to Common European Policies (Controlling for External Shocks and Including Interaction Terms)",
+  output = "regression_table_8.tex"
+)
+```
+
+### Nationalism vote share (15 countries)
+
+```{r, echo=FALSE}
+nationalism_vote_share <- read_csv("nationalism_vote_share.csv")
+EU28_data_globalisation <- read_csv("EU28_data_globalisation.csv")
+
+nationalism_vote_share_data <- nationalism_vote_share|>
+left_join(EU28_data_globalisation, by = c("Country" = "Country", "Year" = "Year"))
+
+nationalism_vote_share_data  <- nationalism_vote_share_data  %>%
+  mutate(
+    Trade_balance_scaled = `Trade balance of goods` / 1e6,
+    FDI_net_balance_scaled = `FDI net balance` / 1e6)
+```
+
+```{r, echo=FALSE}
+EU28_nationalism_vote_share <- read_csv("EU28_nationalism_vote_share.csv")
+EU28_data_globalisation <- read_csv("EU28_data_globalisation.csv")
+
+EU28_nationalism_vote_share_data <- EU28_nationalism_vote_share|>
+left_join(EU28_data_globalisation, by = c("Country" = "Country", "Year" = "Year"))
+
+EU28_nationalism_vote_share_data  <- EU28_nationalism_vote_share_data  %>%
+  mutate(
+    Trade_balance_scaled = `Trade balance of goods` / 1e6,
+    FDI_net_balance_scaled = `FDI net balance` / 1e6)
+```
+```{r, echo=FALSE}
+model_nationalism <- plm(Nationalism_vote_share ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+             data = nationalism_vote_share_data,
+             index = c("Year", "Country"),
+             model = "within",
+             effect = "individual")
+```
+## Nationalism vote share 28 countries 
+```{r, echo=FALSE}
+EU28_model_nationalism <- plm(Nationalism_vote_share ~ Trade_balance_scaled + FDI_net_balance_scaled + Ratio.of.migrant.to.native.workers,
+             data = EU28_nationalism_vote_share_data,
+             index = c("Year", "Country"),
+             model = "within",
+             effect = "individual")
+```
+```{r, echo=FALSE}
+modelsummary(
+  list(
+    "Nationalist Vote Share in 15 Countries" = model_nationalism,
+    "Nationalist Vote Share in 28 Countries" = EU28_model_nationalism
+  ),
+  stars = TRUE,
+  coef_map = pseudo_var_names,
+  gof_map = c("nobs", "r.within", "r.squared", "adj.r.squared"),
+  title = "Regression Table 9: Globalisation and Vote Share Received by Nationalist Parties in Parliamentary Elections",
+  output = "regression_table_9.tex"
+)
+```
+# Descriptive Statistics
+```{r, echo=FALSE}
+summary_data <- pseudo_panel_data[, c(3:7, 10:18)]
+
+pseudo_var_names2 <- c(
+  "Euroscepticism",
+  "Perception of the EU as not beneficial",
+  "Trade balance of goods (in millions USD)",
+  "FDI net balance (in millions USD)",
+  "Migrant to native workers ratio",
+  "EU enlargement (2004)",
+  "EU enlargement (2007)",
+  "EU enlargement (2013)",
+  "Brexit (2020) / COVID-19",
+  "Euro area sovereign debt crisis (2010-2012)",
+  "Annexation of Crimea by Russia (2014)",
+  "Refugee crisis (2015)",
+  "COVID-19 (2020-2021)",
+  "Russian invasion of Ukraine (2022)")
+
+summary_table <- data.frame(
+  N = sapply(summary_data, function(x) sum(!is.na(x))),
+  Min = sapply(summary_data, function(x) if(is.numeric(x)) min(x, na.rm = TRUE) else NA),
+  Max = sapply(summary_data, function(x) if(is.numeric(x)) max(x, na.rm = TRUE) else NA),
+  Mean = sapply(summary_data, function(x) if(is.numeric(x)) mean(x, na.rm = TRUE) else NA),
+  NAs = sapply(summary_data, function(x) sum(is.na(x))))
+
+rownames(summary_table) <- pseudo_var_names2
+
+summary_table[] <- lapply(summary_table, function(col) {
+  if (is.numeric(col)) round(col, 3) else col
+})
+kable(summary_table, format = "latex", caption = "Summary Table 1: Euroscepticism") %>%
+  kable_styling(
+    bootstrap_options = c("hover"), # quitar "striped"
+    font_size = 14,
+    position = "center",
+    full_width = FALSE
+  )
+latex_table <- kable(summary_table, format = "latex", booktabs = TRUE,
+                     caption = "Summary Table 1: Euroscepticism") %>%
+  kable_styling(latex_options = c("hold_position", "striped"))
+save_kable(latex_table, file = "summary_table1.tex")
+```
+```{r, echo=FALSE}
+summary_data2 <- eu_proposals_pseudo_panel_data[, c(3:10,13:21)]
+
+pseudo_var_names2 <- c(
+  "Single Currency",
+  "Common Foreign Policy",
+  "Common Defence Policy",
+  "Common Migration Policy",
+  "Common Trade Policy",
+  "Trade balance of goods (in millions USD)",
+  "FDI net balance (in millions USD)",
+  "Migrant to native workers ratio",
+  "EU enlargement (2004)",
+  "EU enlargement (2007)",
+  "EU enlargement (2013)",
+  "Brexit (2020) / COVID-19",
+  "Euro area sovereign debt crisis (2010-2012)",
+  "Annexation of Crimea by Russia (2014)",
+  "Refugee crisis (2015)",
+  "COVID-19 (2020-2021)",
+  "Russian invasion of Ukraine (2022)")
+
+summary_table2 <- data.frame(
+  N = sapply(summary_data2, function(x) sum(!is.na(x))),
+  Min = sapply(summary_data2, function(x) if(is.numeric(x)) min(x, na.rm = TRUE) else NA),
+  Max = sapply(summary_data2, function(x) if(is.numeric(x)) max(x, na.rm = TRUE) else NA),
+  Mean = sapply(summary_data2, function(x) if(is.numeric(x)) mean(x, na.rm = TRUE) else NA),
+  NAs = sapply(summary_data2, function(x) sum(is.na(x))))
+
+rownames(summary_table2) <- pseudo_var_names2
+
+summary_table2[] <- lapply(summary_table2, function(col) {
+  if (is.numeric(col)) round(col, 3) else col
+})
+kable(summary_table2, format = "latex", caption = "Summary Table 2: Opposition to Common European Policies") %>%
+  kable_styling(
+    bootstrap_options = c("hover"), # quitar "striped"
+    font_size = 14,
+    position = "center",
+    full_width = FALSE
+  )
+latex_table <- kable(summary_table2, format = "latex", booktabs = TRUE,
+                     caption = "Summary Table 2: Euroscepticism") %>%
+  kable_styling(latex_options = c("hold_position", "striped"))
+save_kable(latex_table, file = "summary_table2.tex")
+```
+```{r, echo=FALSE}
+summary_data3 <- EU28_nationalism_vote_share_data[, c(3:6)]
+
+pseudo_var_names3 <- c(
+  "Nationalism Vote Share",
+  "Trade balance of goods (in millions USD)",
+  "FDI net balance (in millions USD)",
+  "Migrant to native workers ratio")
+
+summary_table3 <- data.frame(
+  N = sapply(summary_data3, function(x) sum(!is.na(x))),
+  Min = sapply(summary_data3, function(x) if(is.numeric(x)) min(x, na.rm = TRUE) else NA),
+  Max = sapply(summary_data3, function(x) if(is.numeric(x)) max(x, na.rm = TRUE) else NA),
+  Mean = sapply(summary_data3, function(x) if(is.numeric(x)) mean(x, na.rm = TRUE) else NA),
+  NAs = sapply(summary_data3, function(x) sum(is.na(x))))
+
+rownames(summary_table3) <- pseudo_var_names3
+
+summary_table3[] <- lapply(summary_table3, function(col) {
+  if (is.numeric(col)) round(col, 3) else col
+})
+kable(summary_table3, format = "latex", caption = "Summary Table 3: Electoral Support for Nationalist Parties") %>%
+  kable_styling(
+    bootstrap_options = c("hover"), # quitar "striped"
+    font_size = 14,
+    position = "center",
+    full_width = FALSE
+  )
+latex_table <- kable(summary_table3, format = "latex", booktabs = TRUE,
+                     caption = "Summary Table 3: Electoral Support for Nationalist Parties") %>%
+  kable_styling(latex_options = c("hold_position", "striped"))
+save_kable(latex_table, file = "summary_table3.tex")
+```
+
