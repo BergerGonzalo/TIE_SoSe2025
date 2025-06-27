@@ -1,0 +1,698 @@
+---
+title: "Globalization"
+format: html
+---
+```{r, echo=FALSE, include=FALSE}
+library(haven)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(here)
+library(readr)
+```
+```{r, echo=FALSE, include=FALSE}
+eur_90.3 <- read_sav(here("Eurobarometer/90.3_ZA7489_v2-0-0.sav"))
+eur_91.2 <- read_sav(here("Eurobarometer/91.2_ZA7562_v1-0-0.sav"))
+eur_91.5 <- read_sav(here("Eurobarometer/91.5_ZA7576_v1-0-0.sav"))
+eur_92.3 <- read_sav(here("Eurobarometer/92.3_ZA7601_v1-0-0.sav"))
+eur_93.1 <- read_sav(here("Eurobarometer/93.1_ZA7649_v2-1-0.sav"))
+eur_94.3 <- read_sav(here("Eurobarometer/94.3_ZA7780_v2-0-0.sav"))
+eur_95.3 <- read_sav(here("Eurobarometer/95.3_ZA7783_v1-0-0.sav"))
+eur_96.3 <- read_sav(here("Eurobarometer/96.3_ZA7848_v1-0-0.sav"))
+eur_97.3 <- read_sav(here("Eurobarometer/97.3_ZA7888_v1-0-0.sav"))
+eur_97.5 <- read_sav(here("Eurobarometer/98.2_ZA7953_v1-0-0.sav"))
+eur_98.2 <- read_sav(here("Eurobarometer/98.2_ZA7953_v1-0-0.sav"))
+eur_99.4 <- read_sav(here("Eurobarometer/99.4_ZA7997_v1-0-0.sav"))
+eur_100.2 <- read_sav(here("Eurobarometer/100.2_ZA8779_v1-0-0.sav"))
+
+```
+
+```{r, echo=FALSE, include=FALSE}
+eur_90.3_filtered <- eur_90.3[,c(6, 10, 13, 327:336)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_91.2_filtered <- eur_91.2[,c(6, 12, 116:124)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_91.5_filtered <- eur_91.5[,c(6, 12, 13, 269:278)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_92.3_filtered <- eur_92.3[,c(6, 12, 13, 357:363, 386:394)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_93.1_filtered <- eur_93.1[,c(6, 11, 310:314, 337:345)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_94.3_filtered <- eur_94.3[,c(6, 12, 208:212, 230:238)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_95.3_filtered <- eur_95.3[,c(6, 12, 230:234, 252:261)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_96.3_filtered <- eur_96.3[,c(6, 12, 253:257, 275:283)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_97.3_filtered <- eur_97.3[,c(6, 12, 406:407)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_97.5_filtered <- eur_97.5[,c(6, 12, 196:207)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_98.2_filtered <- eur_98.2[,c(6, 12, 196:207)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_99.4_filtered <- eur_99.4[,c(6, 12, 207:218)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_100.2_filtered <- eur_100.2[,c(6, 12, 188:198, 205:206)] 
+```
+
+```{r, echo=FALSE, include=FALSE}
+eur_80.1 <- read_sav(here("Eurobarometer/80.1_ZA5876_v2-0-0.sav"))
+eur_81.4 <- read_sav(here("Eurobarometer/81.4_ZA5928_v3-0-0.sav"))
+eur_82.3 <- read_sav(here("Eurobarometer/82.3_ZA5932_v3-0-0.sav"))
+eur_83.1 <- read_sav(here("Eurobarometer/83.1_ZA5964_v2-0-0.sav"))
+eur_83.3 <- read_sav(here("Eurobarometer/83.3_ZA5998_v2-0-0.sav"))
+eur_84.3 <- read_sav(here("Eurobarometer/84.3_ZA6643_v4-0-0.sav"))
+eur_85.2 <- read_sav(here("Eurobarometer/85.2_ZA6694_v2-0-0.sav"))
+eur_86.2 <- read_sav(here("Eurobarometer/86.2_ZA6788_v2-0-0.sav"))
+eur_87.2 <- read_sav(here("Eurobarometer/87.2_ZA6862_v3-0-0.sav"))
+eur_87.3 <- read_sav(here("Eurobarometer/87.3_ZA6863_v2-0-0.sav"))
+eur_88.3 <- read_sav(here("Eurobarometer/88.3_ZA6928_v2-0-0.sav"))
+eur_89.1 <- read_sav(here("Eurobarometer/89.1_ZA6963_v2-0-0.sav"))
+```
+```{r, echo=FALSE, include=FALSE}
+eur_80.1_filtered <- eur_80.1[,c(6, 9, 12, 279:283)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_81.4_filtered <- eur_81.4[,c(6, 9, 12, 298:301)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_82.3_filtered <- eur_82.3[,c(6, 9, 12, 331:337)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_83.1_filtered <- eur_83.1[,c(6, 11, 165:169)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_83.3_filtered <- eur_83.3[,c(6, 9, 12, 310:316)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_84.3_filtered <- eur_84.3[,c(6, 10, 13, 314:322)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_85.2_filtered <- eur_85.2[,c(6, 10, 13, 311:319)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_86.2_filtered <- eur_86.2[,c(6, 10, 13, 313:321)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_87.2_filtered <- eur_87.2[,c(6, 10, 13, 219:221)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_87.3_filtered <- eur_87.3[,c(6, 10, 13, 299:307)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_88.3_filtered <- eur_88.3[,c(6, 10, 13, 306:314)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_89.1_filtered <- eur_89.1[,c(6, 10, 13, 327:335)] 
+```
+-----
+```{r, echo=FALSE, include=FALSE}
+eur_70.1 <- read_sav(here("Eurobarometer/70.1_ZA4819_v3-0-2.sav"))
+eur_73.4 <- read_sav(here("Eurobarometer/73.4_ZA5234_v2-0-1.sav"))
+eur_74.2 <- read_sav(here("Eurobarometer/74.2_ZA5449_v2-2-0.sav"))
+eur_75.3 <- read_sav(here("Eurobarometer/75.3_ZA5481_v2-0-1.sav"))
+eur_76.3 <- read_sav(here("Eurobarometer/76.3_ZA5567_v2-0-1.sav"))
+eur_77.3 <- read_sav(here("Eurobarometer/77.3_ZA5612_v2-0-0.sav"))
+eur_78.1 <- read_sav(here("Eurobarometer/78.1_ZA5685_v2-0-0.sav"))
+eur_79.3 <- read_sav(here("Eurobarometer/79.3_ZA5689_v2-0-0.sav"))
+```
+```{r, echo=FALSE, include=FALSE}
+eur_70.1_filtered <- eur_70.1[,c(4, 7, 308:312)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_73.4_filtered <- eur_73.4[,c(4, 7, 315:317)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_74.2_filtered <- eur_74.2[,c(4, 7, 338:341)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_75.3_filtered <- eur_75.3[,c(4, 7, 343:346)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_76.3_filtered <- eur_76.3[,c(6, 11, 12, 457:460)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_77.3_filtered <- eur_77.3[,c(6, 11, 12, 290:293)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_78.1_filtered <- eur_78.1[,c(6, 11, 12, 295:299)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_79.3_filtered <- eur_79.3[,c(6, 12, 306:310)] 
+```
+-----
+```{r, echo=FALSE, include=FALSE}
+eur_60.1 <- read_sav(here("Eurobarometer/60.1_ZA3938_v1-0-1.sav"))
+eur_61 <- read_sav(here("Eurobarometer/61_ZA4056_v1-0-1.sav"))
+eur_62.0 <- read_sav(here("Eurobarometer/62.0_ZA4229_v1-1-0.sav"))
+eur_63.4 <- read_sav(here("Eurobarometer/63.4_ZA4411_v1-1-0.sav"))
+eur_64.2 <- read_sav(here("Eurobarometer/64.2_ZA4414_v1-1-0.sav"))
+eur_65.2 <- read_sav(here("Eurobarometer/65.2_ZA4506_v1-0-1.sav.zip"))
+eur_66.1 <- read_sav(here("Eurobarometer/66.1_ZA4526_v1-0-1.sav"))
+eur_67.2 <- read_sav(here("Eurobarometer/67.2_ZA4530_v2-1-0.sav"))
+eur_68.1 <- read_sav(here("Eurobarometer/68.1_ZA4565_v4-0-1.sav.zip"))
+eur_69.2 <- read_sav(here("Eurobarometer/69.2_ZA4744_v5-0-0.sav.zip"))
+```
+```{r, echo=FALSE, include=FALSE}
+eur_60.1_filtered <- eur_60.1[,c(2, 7, 216:223)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_61_filtered <- eur_61[,c(2, 7, 196:204)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_62.0_filtered <- eur_62.0[,c(2, 8, 305:312)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_63.4_filtered <- eur_63.4[,c(2, 8, 212:218)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_64.2_filtered <- eur_64.2[,c(2, 8, 262:268)] 
+```
+```{r, echo=FALSE, include=FALSE}
+eur_65.2_filtered <- eur_65.2[,c(2, 8, 3077:3082)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_66.1_filtered <- eur_66.1[,c(2, 7, 206:211)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_67.2_filtered <- eur_67.2[,c(2, 7, 289:295)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_68.1_filtered <- eur_68.1[,c(2, 7, 391:395)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_69.2_filtered <- eur_69.2[,c(2, 7, 383:386)]
+```
+-----
+```{r, echo=FALSE, include=FALSE}
+eur_50.0 <- read_sav(here("Eurobarometer/50.0_ZA3085_v1-1-0.sav"))
+eur_51.0 <- read_sav(here("Eurobarometer/51.0_ZA3171_v1-0-1.sav"))
+eur_52.0 <- read_sav(here("Eurobarometer/52.0_ZA3204_v1-0-1.sav"))
+eur_53 <- read_sav(here("Eurobarometer/53_ZA3296_v1-0-1.sav"))
+eur_54.1 <- read_sav(here("Eurobarometer/54.1_ZA3387_v1-1-0.sav"))
+eur_55.1 <- read_sav(here("Eurobarometer/55.1_ZA3507_v1-0-1.sav"))
+eur_56.2 <- read_sav(here("Eurobarometer/56.2_ZA3627_v1-0-1.sav"))
+eur_57.1 <- read_sav(here("Eurobarometer/57.1_ZA3639_v1-0-1.sav"))
+eur_58.1 <- read_sav(here("Eurobarometer/58.1_ZA3693_v1-0-1.sav"))
+eur_59.0 <- read_sav(here("Eurobarometer/59.0_ZA3903_v1-0-1.sav"))
+eur_59.1 <- read_sav(here("Eurobarometer/59.1_ZA3904_v1-0-1.sav"))
+eur_59.2 <- read_sav(here("Eurobarometer/59.2_ZA3905_v1-0-1.sav"))
+```
+```{r, echo=FALSE, include=FALSE}
+eur_50.0_filtered <- eur_50.0[,c(2, 7, 206:214)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_51.0_filtered <- eur_51.0[,c(2, 7, 171:178)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_52.0_filtered <- eur_52.0[,c(2, 7, 512:519)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_53_filtered <- eur_53[,c(2, 7, 155:162)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_54.1_filtered <- eur_54.1[,c(2, 7, 133:139)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_55.1_filtered <- eur_55.1[,c(2, 7, 183:189)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_56.2_filtered <- eur_56.2[,c(2, 7, 157:163)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_57.1_filtered <- eur_57.1[,c(2, 7, 193:199)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_58.1_filtered <- eur_58.1[,c(2, 7, 164:170)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_59.0_filtered <- eur_59.0[,c(2, 7, 46:52)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_59.1_filtered <- eur_59.1[,c(2, 8, 206:212)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_59.2_filtered <- eur_59.2[,c(2, 8, 45:51)]
+```
+-----
+```{r, echo=FALSE, include=FALSE}
+eur_43.1 <- read_sav(here("Eurobarometer/43.1_ZA2637_v1-0-1.sav"))
+eur_44.1 <- read_sav(here("Eurobarometer/44.1_ZA2690_v1-0-1.sav"))
+eur_44.2bis <- read_sav(here("Eurobarometer/44.2bis_ZA2828_v1-0-1.sav"))
+eur_46.0 <- read_sav(here("Eurobarometer/46.0_ZA2898_v1-0-1.sav"))
+eur_47.1 <- read_sav(here("Eurobarometer/47.1_ZA2936_v1-0-1.sav"))
+eur_48.0 <- read_sav(here("Eurobarometer/48.0_ZA2959_v1-0-1.sav"))
+eur_49 <- read_sav(here("Eurobarometer/49_ZA3052_v1-1-0.sav"))
+```
+```{r, echo=FALSE, include=FALSE}
+eur_43.1_filtered <- eur_43.1[,c(1, 6, 318:329)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_44.1_filtered <- eur_44.1[,c(1, 6, 325:335)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_44.2bis_filtered <- eur_44.2bis[,c(2, 7, 422:432)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_46.0_filtered <- eur_46.0[,c(2, 7, 54:64)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_47.1_filtered <- eur_47.1[,c(2, 7, 153:162)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_48.0_filtered <- eur_48.0[,c(2, 7, 190:199)]
+```
+```{r, echo=FALSE, include=FALSE}
+eur_49_filtered <- eur_49[,c(2, 7, 159:167)]
+```
+-----
+```{r, echo=FALSE, include=FALSE}
+df_eur_43.1 <- eur_43.1_filtered[, c(1:3, 5:6)]
+df_eur_44.1 <- eur_44.1_filtered[, c(1:5)]
+df_eur_44.2bis <- eur_44.2bis_filtered[, c(1:5)]
+df_eur_46.0 <- eur_46.0_filtered[, c(1:5)]
+df_eur_47.1 <- eur_47.1_filtered[, c(1:5)]
+df_eur_48.0 <- eur_48.0_filtered[, c(1:5)]
+df_eur_49 <- eur_49_filtered[, c(1:3, 6:7)]
+df_eur_50.0 <- eur_50.0_filtered[, c(1:3, 6:7)]
+df_eur_51.0 <- eur_51.0_filtered[, c(1:3, 6:7)]
+df_eur_52.0 <- eur_52.0_filtered[, c(1:3, 6:7)]
+df_eur_53 <- eur_53_filtered[, c(1:3, 6:7)]
+df_eur_54.1 <- eur_54.1_filtered[, c(1:6)]
+df_eur_55.1 <- eur_55.1_filtered[, c(1:6)]
+df_eur_56.2 <- eur_56.2_filtered[, c(1:6)]
+df_eur_57.1 <- eur_57.1_filtered[, c(1:6)]
+df_eur_58.1 <- eur_58.1_filtered[, c(1:6)]
+df_eur_59.0 <- eur_59.0_filtered[, c(1:6)]
+df_eur_59.1 <- eur_59.1_filtered[, c(1:6)]
+df_eur_59.2 <- eur_59.2_filtered[, c(1:6)]
+df_eur_60.1 <- eur_60.1_filtered[, c(1:6)]
+df_eur_61 <- eur_61_filtered[, c(1:7)]
+df_eur_62.0 <- eur_62.0_filtered[, c(1:6)]
+df_eur_63.4 <- eur_63.4_filtered[, c(1:6)]
+df_eur_64.2 <- eur_64.2_filtered[, c(1:6)]
+df_eur_65.2 <- eur_65.2_filtered[, c(1:6)]
+df_eur_66.1 <- eur_66.1_filtered[, c(1:6)]
+df_eur_67.2 <- eur_67.2_filtered[, c(1:6)]
+df_eur_68.1 <- eur_68.1_filtered[, c(1:6)]
+df_eur_69.2 <- eur_69.2_filtered
+df_eur_70.1 <- eur_70.1_filtered[, c(1:6)]
+df_eur_73.4 <- eur_73.4_filtered
+df_eur_74.2 <- eur_74.2_filtered
+df_eur_75.3 <- eur_75.3_filtered
+df_eur_76.3 <- eur_76.3_filtered[, c(1:2, 4:7)]
+df_eur_77.3 <- eur_77.3_filtered[, c(1:2, 4:7)]
+df_eur_78.1 <- eur_78.1_filtered[, c(1:2, 4:7)]
+df_eur_79.3 <- eur_79.3_filtered[, c(1:6)]
+df_eur_80.1 <- eur_80.1_filtered[, c(1, 3:7)]
+df_eur_81.4 <- eur_81.4_filtered[, c(1, 3:7)]
+df_eur_82.3 <- eur_82.3_filtered[, c(1, 3:7, 9:10)]
+df_eur_83.1 <- eur_83.1_filtered[, c(1:4, 6:7)]
+df_eur_83.3 <- eur_83.3_filtered[, c(1, 3:7, 9:10)]
+df_eur_84.3 <- eur_84.3_filtered[, c(1, 3:7, 9:12)]
+df_eur_85.2 <- eur_85.2_filtered[, c(1, 3:7, 9:12)]
+df_eur_86.2 <- eur_86.2_filtered[, c(1, 3:7, 9:12)]
+df_eur_87.2 <- eur_87.2_filtered[, c(1, 3:6)]
+df_eur_87.3 <- eur_87.3_filtered[, c(1, 3:7, 9:12)]
+df_eur_88.3 <- eur_88.3_filtered[, c(1, 3:7, 9:12)]
+df_eur_89.1 <- eur_89.1_filtered[, c(1, 3:7, 8:12)]
+df_eur_90.3 <- eur_90.3_filtered[, c(1, 3:7, 8:12)]
+df_eur_91.2 <- eur_91.2_filtered[, c(1:10)]
+df_eur_91.5 <- eur_91.5_filtered[, c(1:2, 4:12)]
+df_eur_92.3 <- eur_92.3_filtered[, c(1:2, 4:5, 11:19)]
+df_eur_93.1 <- eur_93.1_filtered[, c(1:4, 8:16)]
+df_eur_94.3 <- eur_94.3_filtered[, c(1:4, 8:16)]
+df_eur_95.3 <- eur_95.3_filtered[, c(1:4, 8:16)]
+df_eur_96.3 <- eur_96.3_filtered[, c(1:4, 8:16)]
+df_eur_97.3 <- eur_97.3_filtered
+df_eur_97.5 <- eur_97.5_filtered[, c(1:12)]
+df_eur_98.2 <- eur_98.2_filtered[, c(1:12)]
+df_eur_99.4 <- eur_99.4_filtered[, c(1:12)]
+df_eur_100.2 <- eur_100.2_filtered[, c(1:12, 14:15)]
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_1 <- list(df_eur_43.1,
+   df_eur_44.1,
+   df_eur_44.2bis,
+   df_eur_46.0,
+   df_eur_47.1,
+   df_eur_48.0,
+   df_eur_49,
+   df_eur_50.0,
+   df_eur_51.0,
+   df_eur_52.0,
+   df_eur_53,
+   df_eur_54.1)
+
+df_eur_group_1 <- lapply(df_eur_group_1, function(group1){
+  group1[] <- lapply(seq_along(group1), function(i){
+    if(i<= 2){as.character(group1[[i]])
+    }else{as.numeric(group1[[i]])}})
+  group1})
+
+df_eur_group_1 <- lapply(df_eur_group_1, function(group1) {
+  names(group1) <- names(df_eur_group_1[[1]])
+  group1})
+
+df_group1 <- bind_rows(df_eur_group_1)
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_2 <- list(df_eur_55.1,
+   df_eur_56.2,
+   df_eur_57.1,
+   df_eur_58.1,
+   df_eur_59.0,
+   df_eur_59.1,
+   df_eur_59.2,
+   df_eur_60.1,
+   df_eur_61)
+
+df_eur_group_2 <- lapply(df_eur_group_2, function(group2){
+  group2[] <- lapply(seq_along(group2), function(i){
+    if(i<= 2){as.character(group2[[i]])
+    }else{as.numeric(group2[[i]])}})
+  group2})
+
+df_eur_group_2 <- lapply(df_eur_group_2, function(group2) {
+  names(group2) <- names(df_eur_group_2[[1]])
+  group2})
+
+df_group2 <- bind_rows(df_eur_group_2)
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_3 <- list(df_eur_62.0,
+   df_eur_63.4,
+   df_eur_64.2,
+   df_eur_65.2,
+   df_eur_66.1,
+   df_eur_67.2,
+   df_eur_68.1,
+   df_eur_69.2,
+   df_eur_70.1)
+
+df_eur_group_3 <- lapply(df_eur_group_3, function(group3){
+  group3[] <- lapply(seq_along(group3), function(i){
+    if(i<= 2){as.character(group3[[i]])
+    }else{as.numeric(group3[[i]])}})
+  group3})
+
+df_eur_group_3 <- lapply(df_eur_group_3, function(group3) {
+  names(group3) <- names(df_eur_group_3[[1]])
+  group3})
+
+df_group3 <- bind_rows(df_eur_group_3)
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_4 <- list(df_eur_74.2,
+                       df_eur_75.3,
+   df_eur_76.3,
+   df_eur_77.3,
+   df_eur_78.1,
+   df_eur_79.3,
+   df_eur_80.1,
+   df_eur_81.4)
+
+df_eur_group_4 <- lapply(df_eur_group_4, function(group4){
+  group4[] <- lapply(seq_along(group4), function(i){
+    if(i<= 2){as.character(group4[[i]])
+    }else{as.numeric(group4[[i]])}})
+  group4})
+
+df_eur_group_4 <- lapply(df_eur_group_4, function(group4){
+  names(group4) <- names(df_eur_group_4[[1]])
+  group4})
+
+df_group4 <- bind_rows(df_eur_group_4)
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_5 <- list(df_eur_82.3,
+                       df_eur_83.3,
+                       df_eur_84.3,
+                       df_eur_85.2,
+                       df_eur_86.2,
+                       df_eur_87.3,
+                       df_eur_88.3)
+
+df_eur_group_5 <- lapply(df_eur_group_5, function(group5){
+  group5[] <- lapply(seq_along(group5), function(i){
+    if(i<= 2){as.character(group5[[i]])
+    }else{as.numeric(group5[[i]])}})
+  group5})
+
+df_eur_group_5 <- lapply(df_eur_group_5, function(group5){
+  names(group5) <- names(df_eur_group_5[[1]])
+  group5})
+
+df_group5 <- bind_rows(df_eur_group_5)
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_6 <- list(df_eur_89.1,
+                       df_eur_90.3,
+                       df_eur_91.5)
+
+df_eur_group_6 <- lapply(df_eur_group_6, function(group6){
+  group6[] <- lapply(seq_along(group6), function(i){
+    if(i<= 2){as.character(group6[[i]])
+    }else{as.numeric(group6[[i]])}})
+  group6})
+
+df_eur_group_6 <- lapply(df_eur_group_6, function(group6){
+  names(group6) <- names(df_eur_group_6[[1]])
+  group6})
+
+df_group6 <- bind_rows(df_eur_group_6)
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_7 <- list(df_eur_92.3,
+                       df_eur_93.1,
+                       df_eur_96.3)
+
+df_eur_group_7 <- lapply(df_eur_group_7, function(group7){
+  group7[] <- lapply(seq_along(group7), function(i){
+    if(i<= 2){as.character(group7[[i]])
+    }else{as.numeric(group7[[i]])}})
+  group7})
+
+df_eur_group_7 <- lapply(df_eur_group_7, function(group7){
+  names(group7) <- names(df_eur_group_7[[1]])
+  group7})
+
+df_group7 <- bind_rows(df_eur_group_7)
+```
+```{r, echo=FALSE, include=FALSE}
+df_eur_group_8 <- list(df_eur_97.5,
+                       df_eur_98.2,
+                       df_eur_99.4,
+                       df_eur_100.2)
+
+df_eur_group_8 <- lapply(df_eur_group_8, function(group8){
+  group8[] <- lapply(seq_along(group8), function(i){
+    if(i<= 2){as.character(group8[[i]])
+    }else{as.numeric(group8[[i]])}})
+  group8})
+
+df_eur_group_8 <- lapply(df_eur_group_8, function(group8){
+  names(group8) <- names(df_eur_group_8[[1]])
+  group8})
+
+df_group8 <- bind_rows(df_eur_group_8)
+```
+```{r, echo=FALSE, include=FALSE}
+colnames(df_group1) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "Common defence policy", "EU future enlargement")
+
+colnames(df_group2) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "Common defence policy", "EU future enlargement", "EU future enlargement_2")
+
+colnames(df_group3) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "Common defence policy", "EU future enlargement")
+
+colnames(df_group4) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "EU future enlargement", "Common defence policy")
+
+colnames(df_group5) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "EU future enlargement", "Common defence policy", "Common migration policy", "Common energy policy", "Single digital market", "Free movement of citizens")
+
+colnames(df_group6) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "EU future enlargement", "Common defence policy", "Common trade policy", "Common migration policy", "Common energy policy", "Single digital market", "Free movement of citizens")
+
+colnames(df_group7) <- c("Survey Id", "Country", "Single currency", "Single digital market", "Common foreign policy", "Common defence policy", "Common trade policy", "Common migration policy", "EU future enlargement", "Free movement of citizens", "Common asylum system", "Reinforce external borders")
+
+colnames(df_group8) <- c("Survey Id", "Country", "Common foreign policy", "Common defence policy", "Common trade policy", "Common migration policy", "EU future enlargement", "Free movement of citizens", "Common health policy", "Single currency", "Common asylum system", "Reinforce external borders")
+```
+```{r, echo=FALSE, include=FALSE}
+colnames(df_eur_73.4) <- c("Survey Id", "Country", "Single currency", "EU future enlargement", "Common foreign policy")
+
+colnames(df_eur_83.1) <- c("Survey Id", "Country", "Single currency", "Common defence policy", "Common migration policy", "Common energy policy")
+
+colnames(df_eur_87.2) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "Common defence policy")
+
+colnames(df_eur_91.2) <- c("Survey Id", "Country", "Single currency", "Common foreign policy", "Common defence policy", "Common trade policy", "Common migration policy", "Common energy policy", "Single digital market", "Free movement of citizens")
+
+colnames(df_eur_95.3) <- c("Survey Id", "Country", "Single currency", "Single digital market", "Common foreign policy", "Common defence policy", "Common trade policy", "Common migration policy", "Common energy policy", "EU future enlargement", "Free movement of citizens", "Common health policy", "Common asylum system")
+
+colnames(df_eur_97.3) <- c("Survey Id", "Country", "Common foreign policy", "Common defence policy")
+```
+```{r, echo=FALSE, include=FALSE}
+list_dataset <- list(
+  df_group1,
+  df_group2,
+  df_group3,
+  df_group4,
+  df_group5,
+  df_group6,
+  df_group7,
+  df_group8,
+  df_eur_73.4,
+  df_eur_83.1,
+  df_eur_87.2,
+  df_eur_91.2,
+  df_eur_95.3,
+  df_eur_97.3
+)
+
+list_dataset <- lapply(list_dataset, function(df) {
+  names(df) <- trimws(names(df))
+  names(df) <- gsub("\\s+", "_", names(df))
+  return(df)
+})
+
+all_columns <- unique(unlist(lapply(list_dataset, names)))
+all_columns <- all_columns[!is.na(all_columns) & all_columns != ""]
+
+prepare_dataframe <- function(df, all_cols) {
+  missing_cols <- setdiff(all_cols, names(df))
+  for (col in missing_cols) {
+    df[[col]] <- NA
+  }
+  df <- df[all_cols]
+  for (i in seq_along(df)) {
+    if (i <= 2) {
+      df[[i]] <- as.character(df[[i]])
+    } else {
+      df[[i]] <- as.numeric(df[[i]])
+    }
+  }
+  
+  return(df)
+}
+
+list_dataset_aligned <- lapply(list_dataset, prepare_dataframe, all_cols = all_columns)
+full_dataset <- bind_rows(list_dataset_aligned)
+
+```
+```{r, echo=FALSE, include=FALSE}
+unique(full_dataset$Country)
+
+eu_1995 <- c("AT", "BE", "DE-E", "DE-W", "DK", "ES", "FI", "FR", "GB", 
+             "GB-GBN", "GB-NIR", "GR", "IE", "IT", "LU", "NL", "PT", "SE")
+full_dataset <- full_dataset[full_dataset$Country %in% eu_1995,]
+```
+```{r, echo=FALSE, include=FALSE}
+Year <- c(
+  "2637" = 1995.1,
+  "2690"   = 1995.2,
+  "2828"   = 1996.1,
+  "2898"   = 1996.2,
+  "2936"   = 1997.1,
+  "2959"   = 1997.2,
+  "3052"   = 1998.1,
+  "3085"   = 1998.2,
+  "3171"   = 1999.1,
+  "3204"   = 1999.2,
+  "3296"   = 2000.1,
+  "3387"   = 2000.2,
+  "3507"   = 2001.1,
+  "3627"   = 2001.2,
+  "3639"   = 2002.1,
+  "3693"   = 2002.2,
+  "3903"   = 2003.1,
+  "3904"   = 2003.1,
+  "3905"   = 2003.1,
+  "3938"   = 2003.2,
+  "4056"   = 2004.1,
+  "4229"   = 2004.2,
+  "4411"   = 2005.1,
+  "4414"   = 2005.2,
+  "4506"   = 2006.1,
+  "4526"   = 2006.2,
+  "4530"   = 2007.1,
+  "4565"   = 2007.2,
+  "4744"   = 2008.1,
+  
+  "701"    = 2008.2,
+  "734"    = 2010.1,
+  "742"    = 2010.2,
+  "753"    = 2011.1,
+  "763"    = 2011.2,
+  "773"    = 2012.1,
+  "781"    = 2012.2,
+  "793"    = 2013.1,
+  "801"    = 2013.2,
+  "814"    = 2014.1,
+  "823"    = 2014.2,
+  "831"    = 2015.1,
+  "833"    = 2015.1,
+  "843"    = 2015.2,
+  "852"    = 2016.1,
+  "862"    = 2016.2,
+  "872"    = 2017.1,
+  "873"    = 2017.1,
+  "883"    = 2017.2,
+  "891"    = 2018.1,
+  "903"    = 2018.2,
+  "912"    = 2019.1,
+  "915"    = 2019.1,
+  "923"    = 2019.2,
+  "931"    = 2020.1,
+  "943"    = 2021.1,
+  "953"    = 2021.2,
+  "963"    = 2022.1,
+  "973"    = 2022.2,
+  "975"    = 2022.2,
+  "982"    = 2023.1,
+  "994"    = 2023.2,
+  "1002"   = 2023.3)
+
+full_dataset$Year <- Year[as.character(full_dataset$"Survey_Id")]
+full_dataset <- full_dataset[order(full_dataset$Year),]
+```
+```{r, echo=FALSE, include=FALSE}
+full_dataset <- full_dataset |>
+  mutate(
+    weight = case_when(
+      Country == "DE-W" ~ 0.8,
+      Country == "DE-E" ~ 0.2,
+      Country == "GB-GBN" ~ 0.97,
+      Country == "GB-NIR" ~ 0.03,
+      Country == "GB" ~ 1,
+      TRUE ~ 1),
+    Country = case_when(
+      Country %in% c("DE-W", "DE-E") ~ "DE",
+      Country %in% c("GB", "GB-GBN", "GB-NIR") ~ "UK",
+      TRUE ~ Country))
+```
+```{r, echo=FALSE, include=FALSE}
+full_dataset <- full_dataset|>
+  select("Survey_Id", "Country", "Single_currency", "Common_foreign_policy", "Common_defence_policy", "Common_migration_policy", "Common_trade_policy", "Year", "weight")                    
+full_dataset$Year <- sub("\\..*", "", full_dataset$Year)
+```
+```{r, echo=FALSE, include=FALSE}
+globalization <- read_csv(here("Data/Processed/globalization.csv"))
+```
+```{r, echo=FALSE, include=FALSE}
+full_dataset$Year <- as.numeric(full_dataset$Year)
+globalization$Year <- as.numeric(globalization$Year)
+
+full_dataset <- full_dataset|>
+  left_join(globalization, by = c("Year", "Country"))
+```
+```{r, echo=FALSE, include=FALSE}
+saveRDS(full_dataset, here("Data", "Processed", "eu_proposals_dataset.rds"))
+```
