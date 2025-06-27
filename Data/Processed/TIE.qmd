@@ -9,10 +9,9 @@ editor:
   markdown: 
     wrap: 72
 ---
-```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
-options(repos = c(CRAN = "https://cloud.r-project.org"))
+```{r, echo=FALSE}
 options(scipen = 999)
-
+library(plm)
 library(dplyr)
 library(ggplot2)
 library(rstudioapi)
@@ -25,6 +24,20 @@ library(lubridate)
 library(readxl)
 library(xfun)
 library(rmarkdown)
+library(haven)
+library(ggplot2)
+library(stargazer)
+library(modelsummary)
+library(webshot2)
+library(lme4)
+library(sandwich)
+library(lmtest)
+library(betareg)
+library(car)
+library(stringr)
+library(summarytools)
+library(rstudioapi)
+library(xfun)
 library(scales)
 library(here)
 ```
@@ -386,7 +399,7 @@ kable(summary_table, format = "html", table.attr = "class='table table-striped'"
 unique(Globalization$Economy)
 
 Globalization <- Globalization %>%
-  mutate(Economy = recode(Economy,
+  mutate(Economy = dplyr::recode(Economy,
     "Austria" = "AT",
     "Belgium" = "BE",
     "Denmark" = "DK",
@@ -412,7 +425,7 @@ Globalization$`Trade balance of goods` <- Globalization$`Trade balance of goods`
 Globalization[Globalization == 0.0]<-NA
 ```
 ```{r, echo=FALSE}
-DE_MWr <- read_csv("DE_MWr_12411-0007.csv")
+DE_MWr <- read_csv(here("Data", "Processed", "DE_MWr_12411-0007.csv"))
 
 DE_MWr_sum <- DE_MWr|>
   group_by(Year)|>
@@ -448,7 +461,7 @@ Globalization_actualized <- Globalization|>
   select(-`Ratio of migrant to native workers.new`)
 ```
 ```{r, echo=FALSE}
-laborforce <- read_csv("ILOSTAT_laborforce_MST_TEAP_SEX_AGE_CCT_NB_A-20250611T0918.csv")
+laborforce <- read_csv(here("Data", "Raw", "ILOSTAT_laborforce_MST_TEAP_SEX_AGE_CCT_NB_A-20250611T0918.csv"))
 names(laborforce)[1] <- "Economy"
 
 laborforce_filtered <- laborforce %>%
@@ -502,7 +515,7 @@ Globalization_actualized <- Globalization_actualized|>
   select(-`Ratio of migrant to native workers.new`)
 ```
 ```{r, echo=FALSE}
-trade_merch_balance <- read_csv("US_TradeMerchBalance.csv.7z")
+trade_merch_balance <- read_csv(here("Data", "Raw", "US_TradeMerchBalance.csv.7z"))
 
 trade_merch_filtered <- trade_merch_balance|>
   filter(
