@@ -21,15 +21,11 @@ library(ggplot2)
 library(stargazer)
 ```
 ```{r, echo=FALSE}
-globalization <- read_csv("globalization.csv")
-eu_proposals <- read_csv("eu_proposals_dataset.csv")
+globalization <- read_csv(here("Data", "Processed", "globalization.csv"))
+eu_proposals <- readRDS(here("Data", "Processed", "eu_proposals_dataset.rds"))
 ```
 ```{r, echo=FALSE}
-globalization <- read_csv("globalization.csv")
-eu_proposals <- read_csv("eu_proposals_dataset.csv")
-```
-```{r, echo=FALSE}
-colnames(eu_proposals)[1] <- "Year"
+colnames(eu_proposals)[8] <- "Year"
 colnames(globalization)[1] <- "Country"
 ```
 ```{r, echo=FALSE}
@@ -51,7 +47,7 @@ summary(model_single_currency)
 stargazer(model_single_currency, type = "text", title = "Table 2: Single currency", digits = 3)
 ```
 ```{r, echo=FALSE}
-model_single_currency <- plm(Common_foreign_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+model_single_currency <- feols(Common_foreign_policy ~ Trade_balance + FDI_net + Migrant_ratio,
               data = panel_data,
               model = "within",
               effect = "twoways")
@@ -60,7 +56,7 @@ summary(model_single_currency)
 stargazer(model_single_currency, type = "text", title = "Table 2: Common foreign policy", digits = 3)
 ```
 ```{r, echo=FALSE}
-model_single_currency <- plm(Common_defence_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+model_single_currency <- feols(Common_defence_policy ~ Trade_balance + FDI_net + Migrant_ratio,
               data = panel_data,
               model = "within",
               effect = "twoways")
@@ -69,7 +65,7 @@ summary(model_single_currency)
 stargazer(model_single_currency, type = "text", title = "Table 2: Common defence policy", digits = 3)
 ```
 ```{r, echo=FALSE}
-model_single_currency <- plm(Common_migration_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+model_single_currency <- feols(Common_migration_policy ~ Trade_balance + FDI_net + Migrant_ratio,
               data = panel_data,
               model = "within",
               effect = "twoways")
@@ -78,7 +74,7 @@ summary(model_single_currency)
 stargazer(model_single_currency, type = "text", title = "Table 2: Common migration policy", digits = 3)
 ```
 ```{r, echo=FALSE}
-model_single_currency <- plm(Common_trade_policy ~ Trade_balance + FDI_net + Migrant_ratio,
+model_single_currency <- feols(Common_trade_policy ~ Trade_balance + FDI_net + Migrant_ratio,
               data = panel_data,
               model = "within",
               effect = "twoways")

@@ -1,5 +1,0 @@
----
-title: "EU28_nationalism"
-format: html
----
-
