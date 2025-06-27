@@ -1,0 +1,442 @@
+---
+title: "Milestone 6 - Results & Robustness Checks"
+format:
+  html:
+    css: styles.css
+    self-contained: true
+execute:
+  echo: true
+  warning: false
+editor: 
+  markdown: 
+    wrap: 72
+---
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+options(scipen = 999)
+library(modelsummary)
+library(dplyr)
+library(ggplot2)
+library(rstudioapi)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(scales)
+library(readr)
+library(gridExtra)
+library(lubridate)
+library(fixest)
+library(plotly)
+library(here)
+```
+```{r, echo=FALSE, include=FALSE, message=FALSE, warning=FALSE}
+data_fe <-read_rds(here("fe_ready_data.rds"))
+names(data_fe)[names(data_fe) == "Day-ahead Price (EUR/MWh)"] <- "Price"
+
+data_fe$Start_Timestamp <- as.POSIXct(
+  sub(" -.*", "", data_fe$Timestamp_Range),
+  format = "%Y-%m-%dT%H:%M:%SZ")
+```
+### OLS Models
+```{r}
+model_ols_baseline <- feols(Price ~ FBMC_Expansion, data = data_fe)
+model_ols_fe <- feols(Price ~ FBMC_Expansion | Area + Start_Timestamp, data = data_fe)
+  
+model_ols_control_ukraine <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_fe)
+
+model_ols_control_generation <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_fe)
+
+model_ols_control_policy <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = model_ols_baseline,
+    `FE Model` = model_ols_fe,
+    `Control Ukraine Invasion` = model_ols_control_ukraine,
+    `Control Energy Generation` = model_ols_control_generation,
+    `Control FBMC Policies` = model_ols_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+
+### DiD Models
+```{r}
+data_fe$CEE <- ifelse(data_fe$FBMC_PreExisting == 0, 1, 0)
+data_fe$DiD <- data_fe$CEE * data$FBMC_Expansion
+
+did_baseline_model <- feols(Price ~ DiD, data = data_fe)
+did_fe_model <- feols(Price ~ DiD | Area + Start_Timestamp, data = data_fe)
+
+did_control_ukraine <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_fe)
+
+did_control_generation <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_fe)
+
+did_control_policy <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = did_baseline_model,
+    `FE Model` = did_fe_model,
+    `Control Ukraine Invasion` = did_control_ukraine,
+    `Control Energy Generation` = did_control_generation,
+    `Control FBMC Policies` = did_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+
+### RDiT Models
+```{r}
+cutoff_date <- as.Date("2022-06-08")
+data_fe$cutoff <- ifelse(as.Date(data_fe$Day_FE) == cutoff_date, 1, 0) 
+
+rdit_baseline_model <- feols(Price ~ cutoff + poly(Start_Timestamp, 2), data = data_fe)
+rdit_fe_model <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) | Area, data = data_fe)
+
+rdit_control_ukraine <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_fe)
+
+rdit_control_generation <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_fe)
+
+rdit_control_policy <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = rdit_baseline_model,
+    `FE Model` = rdit_fe_model,
+    `Control Ukraine Invasion` = rdit_control_ukraine,
+    `Control Energy Generation` = rdit_control_generation,
+    `Control FBMC Policies` = rdit_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+
+# Robustness Checks
+
+# Placebo Tests
+We re-run the DiD and RDiT models using fake treatment dates: **June 8, 2021**, one year before the true FBMC implementation, and **June 8, 2023**, one year after. If we still detect a treatment effect, that would cast doubt on the original strategy.
+
+```{r}
+placebo_before <- as.Date("2021-06-08")
+placebo_after <- as.Date("2023-06-08")
+
+data_fe$placebo_before <- ifelse(as.Date(data_fe$Start_Timestamp) >= as.Date("2021-06-08"), 1, 0)
+data_fe$placebo_after <- ifelse(as.Date(data_fe$Start_Timestamp) >= placebo_after, 1, 0)
+
+data_fe$DiD_placebo_before <- data_fe$CEE * data_fe$placebo_before
+data_fe$DiD_placebo_after <- data_fe$CEE * data_fe$placebo_after
+
+cutoff_date_placebo_before <- as.Date("2021-06-08")
+data_fe$cutoff_placebo_before <- ifelse(as.Date(data_fe$Start_Timestamp) == cutoff_date_placebo_before, 1, 0)
+
+cutoff_date_placebo_after <- as.Date("2023-06-08")
+data_fe$cutoff_placebo_after <- ifelse(as.Date(data_fe$Start_Timestamp) == cutoff_date_placebo_after, 1, 0)
+```
+### DiD Placebo (1 year before)
+```{r}
+did_placebo_before_baseline_model <- feols(Price ~ DiD_placebo_before, data = data_fe)
+did_placebo_before_fe_model <- feols(Price ~ DiD_placebo_before | Area + Start_Timestamp, data = data_fe)
+
+did_placebo_before_control_ukraine <- feols(Price ~ DiD_placebo_before + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_fe)
+
+did_placebo_before_control_generation <- feols(Price ~ DiD_placebo_before + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_fe)
+
+did_placebo_before_control_policy <- feols(Price ~ DiD_placebo_before + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = did_placebo_before_baseline_model,
+    `FE Model` = did_placebo_before_fe_model,
+    `Control Ukraine Invasion` = did_placebo_before_control_ukraine,
+    `Control Energy Generation` = did_placebo_before_control_generation,
+    `Control FBMC Policies` = did_placebo_before_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+### DiD Placebo (1 year after)
+```{r}
+did_placebo_after_baseline_model <- feols(Price ~ DiD_placebo_after, data = data_fe)
+did_placebo_after_fe_model <- feols(Price ~ DiD_placebo_after | Area + Start_Timestamp, data = data_fe)
+
+did_placebo_after_control_ukraine <- feols(Price ~ DiD_placebo_after + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_fe)
+
+did_placebo_after_control_generation <- feols(Price ~ DiD_placebo_after + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_fe)
+
+did_placebo_after_control_policy <- feols(Price ~ DiD_placebo_after + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = did_placebo_after_baseline_model,
+    `FE Model` = did_placebo_after_fe_model,
+    `Control Ukraine Invasion` = did_placebo_after_control_ukraine,
+    `Control Energy Generation` = did_placebo_after_control_generation,
+    `Control FBMC Policies` = did_placebo_after_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+
+### RDiT Placebo (1 year before)
+```{r}
+rdit_placebo_before_baseline_model <- feols(Price ~ cutoff_placebo_before + poly(Start_Timestamp, 2), data = data_fe)
+rdit_placebo_before_fe_model <- feols(Price ~ cutoff_placebo_before + poly(Start_Timestamp, 2) | Area, data = data_fe)
+
+rdit_placebo_before_control_ukraine <- feols(Price ~ cutoff_placebo_before + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_fe)
+
+rdit_placebo_before_control_generation <- feols(Price ~ cutoff_placebo_before + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_fe)
+
+rdit_placebo_before_control_policy <- feols(Price ~ cutoff_placebo_before + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = rdit_placebo_before_baseline_model,
+    `FE Model` = rdit_placebo_before_fe_model,
+    `Control Ukraine Invasion` = rdit_placebo_before_control_ukraine,
+    `Control Energy Generation` = rdit_placebo_before_control_generation,
+    `Control FBMC Policies` = rdit_placebo_before_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+### RDiT Placebo (1 year after)
+```{r}
+rdit_placebo_after_baseline_model <- feols(Price ~ cutoff_placebo_after + poly(Start_Timestamp, 2), data = data_fe)
+rdit_placebo_after_fe_model <- feols(Price ~ cutoff_placebo_after + poly(Start_Timestamp, 2) | Area, data = data_fe)
+
+rdit_placebo_after_control_ukraine <- feols(Price ~ cutoff_placebo_after + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_fe)
+
+rdit_placebo_after_control_generation <- feols(Price ~ cutoff_placebo_after + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_fe)
+
+rdit_placebo_after_control_policy <- feols(Price ~ cutoff_placebo_after + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = rdit_placebo_after_baseline_model,
+    `FE Model` = rdit_placebo_after_fe_model,
+    `Control Ukraine Invasion` = rdit_placebo_after_control_ukraine,
+    `Control Energy Generation` = rdit_placebo_after_control_generation,
+    `Control FBMC Policies` = rdit_placebo_after_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+# DiD Subset
+```{r}
+# We exclude DE-LU from the control group
+data_did_subset1 <- data_fe |>
+  filter(Area != "DE-LU")
+
+did_baseline_model <- feols(Price ~ DiD, data = data_did_subset1)
+did_fe_model <- feols(Price ~ DiD | Area + Start_Timestamp, data = data_did_subset1)
+
+did_control_ukraine <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_did_subset1)
+
+did_control_generation <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_did_subset1)
+
+did_control_policy <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_did_subset1)
+
+msummary(list(
+    `Baseline Model` = did_baseline_model,
+    `FE Model` = did_fe_model,
+    `Control Ukraine Invasion` = did_control_ukraine,
+    `Control Energy Generation` = did_control_generation,
+    `Control FBMC Policies` = did_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+```{r}
+# We exclude PL and RO from the treatment group
+data_did_subset2 <- data_fe |>
+  filter(!(Area %in% c("PL", "RO")))
+
+did_baseline_model <- feols(Price ~ DiD, data = data_did_subset2)
+did_fe_model <- feols(Price ~ DiD | Area + Start_Timestamp, data = data_did_subset2)
+
+did_control_ukraine <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_did_subset2)
+
+did_control_generation <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_did_subset2)
+
+did_control_policy <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_did_subset2)
+
+msummary(list(
+    `Baseline Model` = did_baseline_model,
+    `FE Model` = did_fe_model,
+    `Control Ukraine Invasion` = did_control_ukraine,
+    `Control Energy Generation` = did_control_generation,
+    `Control FBMC Policies` = did_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+# RDiT Subset
+```{r}
+# We exclude DE-LU from the control group
+
+data_did_subset1 <- data_fe |>
+  filter(Area != "DE-LU")
+
+cutoff_date <- as.Date("2022-06-08")
+data_did_subset1$cutoff <- ifelse(as.Date(data_did_subset1$Start_Timestamp) == cutoff_date, 1, 0)
+
+rdit_baseline_model <- feols(Price ~ cutoff + poly(Start_Timestamp, 2), data = data_did_subset1)
+rdit_fe_model <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) | Area, data = data_did_subset1)
+
+rdit_control_ukraine <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_did_subset1)
+
+rdit_control_generation <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_did_subset1)
+
+rdit_control_policy <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_did_subset1)
+
+msummary(list(
+    `Baseline Model` = rdit_baseline_model,
+    `FE Model` = rdit_fe_model,
+    `Control Ukraine Invasion` = rdit_control_ukraine,
+    `Control Energy Generation` = rdit_control_generation,
+    `Control FBMC Policies` = rdit_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+```{r}
+# We exclude PL and RO from the treatment group
+
+data_rdit_subset2 <- data_fe |>
+  filter(!(Area %in% c("PL", "RO")))
+
+cutoff_date <- as.Date("2022-06-08")
+data_rdit_subset2$cutoff <- ifelse(as.Date(data_rdit_subset2$Start_Timestamp) == cutoff_date, 1, 0)
+
+rdit_baseline_model <- feols(Price ~ cutoff + poly(Start_Timestamp, 2), data = data_rdit_subset2)
+rdit_fe_model <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) | Area, data = data_rdit_subset2)
+
+rdit_control_ukraine <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area, data = data_rdit_subset2)
+
+rdit_control_generation <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area, data = data_rdit_subset2)
+
+rdit_control_policy <- feols(Price ~ cutoff + poly(Start_Timestamp, 2) + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area, data = data_rdit_subset2)
+
+msummary(list(
+    `Baseline Model` = rdit_baseline_model,
+    `FE Model` = rdit_fe_model,
+    `Control Ukraine Invasion` = rdit_control_ukraine,
+    `Control Energy Generation` = rdit_control_generation,
+    `Control FBMC Policies` = rdit_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+
+# Robustness Checks FE
+
+### OLS Models - Month FE
+```{r}
+model_ols_baseline <- feols(Price ~ FBMC_Expansion, data = data_fe)
+model_ols_fe <- feols(Price ~ FBMC_Expansion | Area + Month_FE, data = data_fe)
+  
+model_ols_control_ukraine <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area + Month_FE, data = data_fe)
+
+model_ols_control_generation <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area + Month_FE, data = data_fe)
+
+model_ols_control_policy <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area + Month_FE, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = model_ols_baseline,
+    `FE Model` = model_ols_fe,
+    `Control Ukraine Invasion` = model_ols_control_ukraine,
+    `Control Energy Generation` = model_ols_control_generation,
+    `Control FBMC Policies` = model_ols_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+### DiD Models - Month FE
+```{r}
+data_fe$DiD <- data_fe$CEE_Area * data_fe$FBMC_Expansion
+
+did_baseline_model <- feols(Price ~ DiD, data = data_fe)
+did_fe_model <- feols(Price ~ DiD | Area + Month_FE, data = data_fe)
+
+did_control_ukraine <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` | Area + Month_FE, data = data_fe)
+
+did_control_generation <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Area + Month_FE, data = data_fe)
+
+did_control_policy <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Area + Month_FE, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = did_baseline_model,
+    `FE Model` = did_fe_model,
+    `Control Ukraine Invasion` = did_control_ukraine,
+    `Control Energy Generation` = did_control_generation,
+    `Control FBMC Policies` = did_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+
+### OLS Models - CORE FE
+```{r}
+model_ols_baseline <- feols(Price ~ FBMC_Expansion, data = data_fe)
+model_ols_fe <- feols(Price ~ FBMC_Expansion | CORE_Area + Start_Timestamp, data = data_fe)
+  
+model_ols_control_ukraine <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` | CORE_Area, data = data_fe)
+
+model_ols_control_generation <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | CORE_Area, data = data_fe)
+
+model_ols_control_policy <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | CORE_Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = model_ols_baseline,
+    `FE Model` = model_ols_fe,
+    `Control Ukraine Invasion` = model_ols_control_ukraine,
+    `Control Energy Generation` = model_ols_control_generation,
+    `Control FBMC Policies` = model_ols_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+
+### DiD Models - CORE FE
+```{r}
+data_fe$DiD <- data_fe$CEE_Area * data_fe$FBMC_Expansion
+
+did_baseline_model <- feols(Price ~ DiD, data = data_fe)
+did_fe_model <- feols(Price ~ DiD | CORE_Area + Start_Timestamp, data = data_fe)
+
+did_control_ukraine <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` | CORE_Area, data = data_fe)
+
+did_control_generation <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | CORE_Area, data = data_fe)
+
+did_control_policy <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | CORE_Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = did_baseline_model,
+    `FE Model` = did_fe_model,
+    `Control Ukraine Invasion` = did_control_ukraine,
+    `Control Energy Generation` = did_control_generation,
+    `Control FBMC Policies` = did_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+### OLS Models - Expansion Area
+```{r}
+model_ols_baseline <- feols(Price ~ FBMC_Expansion, data = data_fe)
+model_ols_fe <- feols(Price ~ FBMC_Expansion | Expansion_Area + Start_Timestamp, data = data_fe)
+  
+model_ols_control_ukraine <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` | Expansion_Area, data = data_fe)
+
+model_ols_control_generation <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Expansion_Area, data = data_fe)
+
+model_ols_control_policy <- feols(Price ~ FBMC_Expansion + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Expansion_Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = model_ols_baseline,
+    `FE Model` = model_ols_fe,
+    `Control Ukraine Invasion` = model_ols_control_ukraine,
+    `Control Energy Generation` = model_ols_control_generation,
+    `Control FBMC Policies` = model_ols_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
+### DiD Models - Expansion Area
+```{r}
+data_fe$DiD <- data_fe$CEE_Area * data_fe$FBMC_Expansion
+
+did_baseline_model <- feols(Price ~ DiD, data = data_fe)
+did_fe_model <- feols(Price ~ DiD | Expansion_Area + Start_Timestamp, data = data_fe)
+
+did_control_ukraine <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` | Expansion_Area, data = data_fe)
+
+did_control_generation <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` | Expansion_Area, data = data_fe)
+
+did_control_policy <- feols(Price ~ DiD + Ukraine_Invasion_Dummy + `Net Position (MW)` + Biomass + `Fossil Brown coal/Lignite` + `Fossil Coal-derived gas` + `Fossil Gas` + `Fossil Hard coal` + `Fossil Oil` + Geothermal + `Hydro Pumped Storage` + `Hydro Run-of-river and poundage` + `Hydro Water Reservoir` + Nuclear + Other + `Other renewable` + Solar + Waste + `Wind Offshore` + `Wind Onshore` + `Nordic FBMC Dummy` + `PICASSO Dummy` + `MARI Dummy` | Expansion_Area, data = data_fe)
+
+msummary(list(
+    `Baseline Model` = did_baseline_model,
+    `FE Model` = did_fe_model,
+    `Control Ukraine Invasion` = did_control_ukraine,
+    `Control Energy Generation` = did_control_generation,
+    `Control FBMC Policies` = did_control_policy),
+  digits = 3,
+  stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+```
