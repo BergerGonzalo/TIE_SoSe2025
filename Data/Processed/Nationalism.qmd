@@ -23,7 +23,7 @@ library(stargazer)
 library(xtable)
 ```
 ```{r, echo=FALSE}
-parliamentary_elections <- read_csv(unz("ppeg_parl_2024v1.zip", "ppeg_parl_2024v1.csv"))
+parliamentary_elections <- read_csv(here("Data", "Raw", "ppeg_parl_2024v1.csv"))
 ```
 ```{r, echo=FALSE}
 ue15_iso2 <- c("AT", "BE", "DE", "DK", "ES", "FI", "FR", "GB", 
@@ -114,5 +114,11 @@ nationalism_results <- nationalism_results |> select(-"Country", -"Party Name")
 ```
 ```{r, echo=FALSE}
 table_xt <- xtable(nationalism_results)
-print(table_xt, file = "Nationalism_Vote_Share.tex", include.rownames = FALSE, floating = FALSE,  tabular.environment = "longtable")
+print(
+  table_xt,
+  file = here("Tables", "Other", "Nationalism_Vote_Share.tex"),
+  include.rownames = FALSE,
+  floating = FALSE,
+  tabular.environment = "longtable"
+)
 ```
